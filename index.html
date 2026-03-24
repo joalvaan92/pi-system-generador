@@ -788,22 +788,28 @@ const TabCargar = ({state, setState}) => {
     r.readAsArrayBuffer(f);
   };
 
-  // Extract tags from raw text using regex
-  const extractTagsFromText = (text) => {
-    // Join everything, normalize spaces, then search
-    const normalized = text.replace(/\s+/g, ' ');
-    // Also try joining without spaces (AutoCAD sometimes fragments text character by character)
-    const noSpaces = text.replace(/\s/g, '');
+  // Build a set of valid prefixes from CAT_ACTIVOS for filtering
+  const VALID_PREFIXES = new Set(CAT_ACTIVOS.map(a => a.id));
+
+  // Extract tags from raw text - optionally strict (only known prefixes) or loose
+  const extractTagsFromText = (text, strictPrefixes = true) => {
+    const sources = [
+      text.replace(/\s+/g, ' '),           // normalized
+      text.replace(/\s/g, ''),             // no spaces at all (AutoCAD fragmented)
+      text.replace(/\n/g, ' '),            // newlines as spaces
+    ];
     const tagRegex = /\b([A-Z]{2,5}-\d{2,3}[A-Z]?)\b/g;
     const seen = new Set();
     const found = [];
-    for (const src of [normalized, noSpaces]) {
+    for (const src of sources) {
       let m;
       while ((m = tagRegex.exec(src)) !== null) {
         const tag = m[1];
+        const pfx = tag.split('-')[0];
+        // Strict mode: only accept prefixes that exist in our catalog
+        if (strictPrefixes && !VALID_PREFIXES.has(pfx)) continue;
         if (!seen.has(tag)) {
           seen.add(tag);
-          const pfx = tag.split('-')[0];
           const catActivo = CAT_ACTIVOS.find(a => a.id === pfx);
           found.push({ id: found.length+1, tag, name: catActivo ? catActivo.desc : pfx, area: pfx });
         }
@@ -811,6 +817,36 @@ const TabCargar = ({state, setState}) => {
       tagRegex.lastIndex = 0;
     }
     return found;
+  };
+
+  // Reconstruct AutoCAD text: each char is a separate item with absolute X,Y coords
+  const reconstructAutocadText = (items) => {
+    if (!items.length) return '';
+    // Group by Y coordinate (tolerance 3 units = same line)
+    const lines = {};
+    for (const it of items) {
+      if (!it.str.trim()) continue;
+      const y = Math.round(it.transform[5] / 3) * 3;
+      if (!lines[y]) lines[y] = [];
+      lines[y].push({ x: it.transform[4], str: it.str, w: it.width || 0 });
+    }
+    // Sort lines top-to-bottom (higher Y = higher on page in PDF coords)
+    const sortedYs = Object.keys(lines).map(Number).sort((a,b) => b - a);
+    let result = '';
+    for (const y of sortedYs) {
+      const lineItems = lines[y].sort((a,b) => a.x - b.x);
+      let lineText = '';
+      let lastX = -9999;
+      for (const it of lineItems) {
+        // If gap between items > ~8 units, add space separator
+        const gap = it.x - lastX;
+        if (lastX !== -9999 && gap > 8) lineText += ' ';
+        lineText += it.str;
+        lastX = it.x + it.w;
+      }
+      result += lineText.trim() + '\n';
+    }
+    return result;
   };
 
   const pdfPageToCanvas = async (page, scale = 4.0) => {
@@ -828,34 +864,21 @@ const TabCargar = ({state, setState}) => {
       const arrayBuffer = await f.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
 
-      // ── PASO 1: PDF.js text extraction con manejo especial para AutoCAD ──
+      // ── PASO 1: PDF.js con reconstrucción inteligente de texto AutoCAD ──
       setPdfStatus('Extrayendo texto del PDF...');
       let allText = '';
       const canvases = [];
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
-        // AutoCAD fragmenta cada carácter por separado — agrupar por proximidad X/Y
-        const items = content.items;
-        // Sort by Y then X to reconstruct reading order
-        const sorted = [...items].sort((a,b) => {
-          const dy = Math.round(b.transform[5]/4)*4 - Math.round(a.transform[5]/4)*4;
-          return dy !== 0 ? dy : a.transform[4] - b.transform[4];
-        });
-        // Group chars that are close together (same "word")
-        let pageText = '';
-        let lastX = -9999, lastY = -9999;
-        for (const it of sorted) {
-          const x = it.transform[4], y = it.transform[5];
-          const gap = Math.abs(y - lastY) > 5 ? '\n' : (x - lastX > 15 ? ' ' : '');
-          pageText += gap + it.str;
-          lastX = x + (it.width || 0); lastY = y;
-        }
-        allText += pageText + '\n';
+        allText += reconstructAutocadText(content.items) + '\n';
         canvases.push(await pdfPageToCanvas(page));
       }
 
-      let found = extractTagsFromText(allText);
+      // Strict: solo prefijos del catálogo (filtra basura del cartucho de revisión)
+      let found = extractTagsFromText(allText, true);
+      // Si no encontró nada conocido, intentar sin filtro
+      if (found.length === 0) found = extractTagsFromText(allText, false);
 
       // ── PASO 2: OCR con Tesseract si PDF.js no encontró tags ──
       if (found.length === 0) {
@@ -866,10 +889,7 @@ const TabCargar = ({state, setState}) => {
             if (m.status === 'loading tesseract core') setPdfStatus('Cargando motor OCR...');
           }
         });
-        // No whitelist — let Tesseract see everything, regex will filter
-        await worker.setParameters({
-          tessedit_pageseg_mode: '11', // sparse text — good for diagrams
-        });
+        await worker.setParameters({ tessedit_pageseg_mode: '11' });
         let ocrText = '';
         for (let i = 0; i < canvases.length; i++) {
           setPdfStatus(`OCR página ${i+1} de ${canvases.length}...`);
@@ -877,19 +897,21 @@ const TabCargar = ({state, setState}) => {
           ocrText += text + '\n';
         }
         await worker.terminate();
-        found = extractTagsFromText(ocrText);
 
-        // ── PASO 3: Si Tesseract tampoco — intentar regex más flexible ──
+        // Estricto primero (solo prefijos del catálogo), luego flexible
+        found = extractTagsFromText(ocrText, true);
+        if (found.length === 0) found = extractTagsFromText(ocrText, false);
+
+        // Último recurso: regex flexible con espacios alrededor del guión
         if (found.length === 0) {
-          // Some OCR engines output lowercase or with spaces inside tags (e.g. "SIL - 01")
           const flexRegex = /\b([A-Za-z]{2,5})\s*[-–]\s*(\d{2,3})\b/g;
-          const seen = new Set();
-          let m;
+          const seen = new Set(); let m;
           while ((m = flexRegex.exec(ocrText)) !== null) {
-            const tag = (m[1].toUpperCase() + '-' + m[2]);
+            const pfx = m[1].toUpperCase();
+            if (!VALID_PREFIXES.has(pfx)) continue; // solo prefijos conocidos
+            const tag = pfx + '-' + m[2];
             if (!seen.has(tag)) {
               seen.add(tag);
-              const pfx = m[1].toUpperCase();
               const catActivo = CAT_ACTIVOS.find(a => a.id === pfx);
               found.push({ id: found.length+1, tag, name: catActivo ? catActivo.desc : pfx, area: pfx });
             }
