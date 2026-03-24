@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pi System Generador · Calidra</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --red:#D0021B;--red2:#E8031F;--red3:#FF1A31;
+  --red-dim:rgba(208,2,27,0.08);--red-dim2:rgba(208,2,27,0.04);--red-border:rgba(208,2,27,0.2);
+  --dark:#1A1A1A;--dark2:#2D2D2D;
+  --gray:#6B7280;--gray2:#9CA3AF;--gray3:#D1D5DB;--gray4:#E5E7EB;--gray5:#F3F4F6;--gray6:#F9FAFB;
+  --white:#FFFFFF;
+  --green:#059669;--green-dim:rgba(5,150,105,0.08);
+  --blue:#2563EB;--blue-dim:rgba(37,99,235,0.08);
+  --orange:#D97706;--orange-dim:rgba(217,119,6,0.08);
+  --purple:#7C3AED;--purple-dim:rgba(124,58,237,0.08);
+  --sans:'Montserrat',sans-serif;--mono:'JetBrains Mono',monospace;
+  --shadow:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md:0 4px 12px rgba(0,0,0,0.08),0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg:0 10px 30px rgba(0,0,0,0.1),0 4px 8px rgba(0,0,0,0.06);
+  --shadow-red:0 4px 16px rgba(208,2,27,0.18);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--gray6);color:var(--dark);font-family:var(--sans);font-size:14px;min-height:100vh;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--gray4);}
+::-webkit-scrollbar-thumb{background:var(--gray3);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:var(--red);}
+
+/* LOGIN */
+.login-bg{min-height:100vh;background:linear-gradient(135deg,#fff 0%,#fff5f5 60%,#ffe8e8 100%);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
+.login-bg::before{content:'';position:absolute;top:-200px;right:-200px;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(208,2,27,0.07) 0%,transparent 70%);}
+.login-card{background:var(--white);border-radius:24px;box-shadow:var(--shadow-lg);width:440px;padding:48px 44px;position:relative;z-index:1;animation:slideUp .4s cubic-bezier(.4,0,.2,1);}
+@keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.login-logo-wrap{text-align:center;margin-bottom:28px;padding-bottom:24px;border-bottom:1px solid var(--gray4);}
+.login-logo-wrap img{height:64px;object-fit:contain;}
+.login-system-name{font-size:18px;font-weight:800;color:var(--dark);text-align:center;margin-bottom:4px;letter-spacing:-.3px;}
+.login-sub{font-size:12px;color:var(--gray);text-align:center;margin-bottom:28px;font-weight:500;}
+.form-group{margin-bottom:16px;}
+.form-label{display:block;font-size:10px;font-weight:800;color:var(--dark2);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;}
+.form-input{width:100%;padding:11px 14px;border:1.5px solid var(--gray4);border-radius:10px;font-family:var(--sans);font-size:13px;font-weight:500;color:var(--dark);outline:none;transition:border-color .2s,box-shadow .2s;}
+.form-input:focus{border-color:var(--red);box-shadow:0 0 0 3px var(--red-dim);}
+.btn-login{width:100%;padding:14px;background:var(--red);color:#fff;border:none;border-radius:10px;font-family:var(--sans);font-size:13px;font-weight:800;cursor:pointer;letter-spacing:.5px;transition:all .2s;box-shadow:var(--shadow-red);text-transform:uppercase;}
+.btn-login:hover{background:var(--red2);transform:translateY(-1px);}
+.quick-access{margin-top:22px;padding:14px;background:var(--gray6);border-radius:12px;border:1px solid var(--gray4);}
+.quick-access-title{font-size:10px;font-weight:800;color:var(--gray2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
+.q-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;background:var(--white);border:1.5px solid var(--gray3);border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;margin:3px;transition:all .15s;}
+.q-chip:hover{border-color:var(--red);color:var(--red);}
+.q-avatar{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;}
+.q-role{background:var(--red-dim);color:var(--red);padding:1px 5px;border-radius:8px;font-size:8px;font-weight:800;text-transform:uppercase;}
+
+/* HEADER */
+.header{background:var(--white);border-bottom:1px solid var(--gray4);height:62px;padding:0 28px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow);position:sticky;top:0;z-index:100;}
+.header-logo img{height:42px;object-fit:contain;}
+.header-sep{width:1px;height:30px;background:var(--gray4);margin:0 20px;}
+.header-system-name{font-size:14px;font-weight:800;color:var(--dark);}
+.header-system-sub{font-size:10px;color:var(--gray2);font-weight:500;margin-top:1px;}
+.h-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0;}
+.h-name{font-size:13px;font-weight:700;color:var(--dark);}
+.h-role{font-size:10px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px;}
+.btn-logout{padding:7px 15px;border:1.5px solid var(--gray3);border-radius:8px;background:transparent;font-family:var(--sans);font-size:11px;font-weight:700;color:var(--gray);cursor:pointer;transition:all .15s;}
+.btn-logout:hover{border-color:var(--red);color:var(--red);}
+.red-stripe{height:3px;background:linear-gradient(90deg,var(--red) 0%,#ff4455 50%,var(--red) 100%);}
+
+/* TABS */
+.tabs-bar{background:var(--white);border-bottom:1px solid var(--gray4);padding:0 28px;display:flex;gap:0;overflow-x:auto;}
+.tab{padding:14px 20px;font-size:11px;font-weight:800;letter-spacing:.5px;color:var(--gray2);cursor:pointer;border-bottom:2.5px solid transparent;white-space:nowrap;display:flex;align-items:center;gap:7px;transition:all .15s;text-transform:uppercase;}
+.tab:hover{color:var(--dark2);}
+.tab.active{color:var(--red);border-bottom-color:var(--red);}
+.tab-badge{padding:2px 7px;border-radius:20px;font-size:9px;font-weight:800;font-family:var(--mono);}
+.tb-red{background:var(--red-dim);color:var(--red);}
+.tb-blue{background:var(--blue-dim);color:var(--blue);}
+.tb-green{background:var(--green-dim);color:var(--green);}
+.tb-orange{background:var(--orange-dim);color:var(--orange);}
+
+/* CONTENT */
+.content{padding:24px 28px;max-width:1440px;margin:0 auto;}
+
+/* CARDS */
+.card{background:var(--white);border:1px solid var(--gray4);border-radius:14px;padding:22px;box-shadow:var(--shadow);}
+.card-title{font-size:12px;font-weight:800;color:var(--dark);margin-bottom:18px;display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:.6px;}
+.card-dot{width:8px;height:8px;border-radius:2px;background:var(--red);flex-shrink:0;}
+.mb-16{margin-bottom:16px;}.mb-20{margin-bottom:20px;}.mt-8{margin-top:8px;}.mt-12{margin-top:12px;}.mt-16{margin-top:16px;}
+
+/* STATS */
+.stat{background:var(--gray6);border:1px solid var(--gray4);border-radius:12px;padding:18px 20px;transition:box-shadow .2s;}
+.stat:hover{box-shadow:var(--shadow-md);}
+.stat-label{font-size:10px;font-weight:700;color:var(--gray2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.stat-val{font-size:32px;font-weight:800;line-height:1;font-family:var(--mono);color:var(--dark);}
+.sv-red{color:var(--red);}.sv-green{color:var(--green);}.sv-blue{color:var(--blue);}.sv-orange{color:var(--orange);}
+.stat-sub{font-size:11px;color:var(--gray2);margin-top:6px;font-weight:500;}
+.progress{background:var(--gray4);border-radius:99px;height:5px;overflow:hidden;margin-top:10px;}
+.progress-fill{height:100%;border-radius:99px;transition:width .6s cubic-bezier(.4,0,.2,1);}
+.pf-red{background:linear-gradient(90deg,var(--red),var(--red3));}.pf-green{background:var(--green);}
+
+/* GRIDS */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+.g5{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
+
+/* STEPS */
+.steps{display:flex;gap:0;}
+.step{flex:1;display:flex;flex-direction:column;align-items:center;position:relative;}
+.step:not(:last-child)::after{content:'';position:absolute;top:15px;left:50%;width:100%;height:2px;background:var(--gray4);z-index:0;}
+.step.done:not(:last-child)::after{background:var(--red);}
+.step-circle{width:30px;height:30px;border-radius:50%;border:2px solid var(--gray3);background:var(--white);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;position:relative;z-index:1;color:var(--gray2);}
+.step-circle.active{border-color:var(--red);color:var(--red);}
+.step-circle.done{border-color:var(--red);background:var(--red);color:#fff;}
+.step-label{font-size:10px;font-weight:700;color:var(--gray2);margin-top:7px;text-align:center;text-transform:uppercase;letter-spacing:.3px;}
+.step.active .step-label,.step.done .step-label{color:var(--red);}
+
+/* TIMELINE */
+.tl-item{display:flex;gap:14px;padding-bottom:20px;position:relative;}
+.tl-item:not(:last-child)::before{content:'';position:absolute;left:13px;top:30px;width:1.5px;bottom:0;background:var(--gray4);}
+.tl-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;}
+.tl-dot.done{background:var(--red-dim);border:2px solid var(--red);color:var(--red);}
+.tl-dot.active{background:var(--red);border:2px solid var(--red);color:#fff;animation:pulse 1.5s infinite;}
+.tl-dot.pending{background:var(--gray5);border:2px solid var(--gray3);color:var(--gray3);}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(208,2,27,.3)}50%{box-shadow:0 0 0 6px rgba(208,2,27,0)}}
+.tl-title{font-size:13px;font-weight:700;color:var(--dark);padding-top:3px;}
+.tl-desc{font-size:11px;color:var(--gray);margin-top:3px;}
+
+/* UPLOAD */
+.upload-zone{border:2px dashed var(--gray3);border-radius:14px;padding:40px 24px;text-align:center;cursor:pointer;transition:all .2s;background:var(--gray6);}
+.upload-zone:hover{border-color:var(--red);background:var(--red-dim2);}
+.uz-icon{font-size:40px;margin-bottom:14px;}
+.upload-zone h3{font-size:15px;font-weight:700;color:var(--dark2);margin-bottom:6px;}
+.upload-zone p{font-size:12px;color:var(--gray2);}
+
+/* BUTTONS */
+.btn{padding:9px 18px;border-radius:9px;font-family:var(--sans);font-size:12px;font-weight:700;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:6px;letter-spacing:.3px;transition:all .15s;}
+.btn-red{background:var(--red);color:#fff;box-shadow:var(--shadow-red);}
+.btn-red:hover{background:var(--red2);transform:translateY(-1px);}
+.btn-outline{background:var(--white);color:var(--dark2);border:1.5px solid var(--gray3);}
+.btn-outline:hover{border-color:var(--red);color:var(--red);}
+.btn-ghost{background:transparent;color:var(--gray);border:none;}
+.btn-ghost:hover{color:var(--red);}
+.btn-green{background:var(--green);color:#fff;}
+.btn-green:hover{opacity:.9;}
+.btn-blue{background:var(--blue);color:#fff;}
+.btn-blue:hover{opacity:.9;}
+.btn-orange{background:var(--orange);color:#fff;}
+.btn-orange:hover{opacity:.9;}
+.btn-sm{padding:6px 12px;font-size:11px;}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important;}
+.w-full{width:100%;justify-content:center;}
+
+/* TABLE */
+.table-wrap{overflow:auto;border:1px solid var(--gray4);border-radius:12px;}
+table{width:100%;border-collapse:collapse;}
+th{background:var(--gray6);padding:10px 14px;text-align:left;font-size:10px;font-weight:800;color:var(--gray);text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid var(--gray4);white-space:nowrap;}
+td{padding:9px 14px;border-bottom:1px solid var(--gray4);font-size:12px;vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--red-dim2);}
+
+/* TAGS / BADGES */
+.tag{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:5px;display:inline-block;}
+.tag-red{color:var(--red);background:var(--red-dim);}
+.tag-blue{color:var(--blue);background:var(--blue-dim);}
+.tag-green{color:var(--green);background:var(--green-dim);}
+.tag-orange{color:var(--orange);background:var(--orange-dim);}
+.tag-gray{color:var(--gray);background:var(--gray5);}
+.tag-purple{color:var(--purple);background:var(--purple-dim);}
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;}
+.badge-red{background:var(--red-dim);color:var(--red);}
+.badge-green{background:var(--green-dim);color:var(--green);}
+.badge-blue{background:var(--blue-dim);color:var(--blue);}
+.badge-orange{background:var(--orange-dim);color:var(--orange);}
+.badge-gray{background:var(--gray5);color:var(--gray);}
+.badge-purple{background:var(--purple-dim);color:var(--purple);}
+
+/* ALERT */
+.alert{padding:12px 16px;border-radius:10px;font-size:12px;font-weight:500;display:flex;align-items:flex-start;gap:10px;}
+.alert-red{background:var(--red-dim);border:1px solid var(--red-border);color:var(--red);}
+.alert-green{background:var(--green-dim);border:1px solid rgba(5,150,105,.2);color:#065f46;}
+.alert-blue{background:var(--blue-dim);border:1px solid rgba(37,99,235,.2);color:#1e40af;}
+.alert-orange{background:var(--orange-dim);border:1px solid rgba(217,119,6,.2);color:#92400e;}
+
+/* INPUTS */
+input[type=text],input[type=search],input[type=password],input[type=email],input[type=number],select,textarea{background:var(--white);border:1.5px solid var(--gray4);color:var(--dark);padding:8px 12px;border-radius:9px;font-family:var(--sans);font-size:12px;font-weight:500;outline:none;transition:border-color .15s,box-shadow .15s;}
+input:focus,select:focus,textarea:focus{border-color:var(--red);box-shadow:0 0 0 3px var(--red-dim);}
+select{cursor:pointer;}
+input[type=checkbox]{accent-color:var(--red);width:14px;height:14px;cursor:pointer;}
+
+/* TREE */
+.tree{font-size:12px;}
+.tree-row{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:8px;cursor:pointer;transition:background .1s;}
+.tree-row:hover{background:var(--gray5);}
+.tree-row.selected{background:var(--red-dim);border-left:2.5px solid var(--red);}
+.tree-toggle{width:16px;height:16px;display:flex;align-items:center;justify-content:center;color:var(--gray2);font-size:9px;flex-shrink:0;}
+.tree-name{flex:1;font-weight:600;color:var(--dark);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tree-meta{display:flex;align-items:center;gap:4px;flex-shrink:0;}
+.tree-tmpl{font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tree-tmpl.set{color:var(--green);background:var(--green-dim);}
+.tree-tmpl.unset{color:var(--orange);background:var(--orange-dim);}
+.tree-proc{font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;}
+.tree-proc.set{color:var(--blue);background:var(--blue-dim);}
+.tree-proc.unset{color:var(--gray2);background:var(--gray5);}
+
+/* PANEL */
+.panel{display:flex;gap:16px;height:calc(100vh - 168px);min-height:400px;}
+.panel-l{width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;overflow:hidden;}
+.panel-r{flex:1;display:flex;flex-direction:column;gap:12px;overflow:hidden;}
+
+/* CHECK ROW */
+.check-row{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:10px;border:1.5px solid var(--gray4);background:var(--white);transition:all .15s;cursor:pointer;}
+.check-row:hover{border-color:var(--gray3);}
+.check-row.checked{border-color:var(--red);background:var(--red-dim2);}
+
+/* MODE CARDS */
+.mode-card{border:2px solid var(--gray4);border-radius:14px;padding:22px;cursor:pointer;transition:all .2s;text-align:center;}
+.mode-card:hover{border-color:var(--red);box-shadow:var(--shadow-md);}
+.mode-card.active{border-color:var(--red);background:var(--red-dim2);box-shadow:0 0 0 3px var(--red-dim);}
+.mode-card .mc-icon{font-size:32px;margin-bottom:10px;}
+.mode-card h3{font-size:13px;font-weight:800;color:var(--dark);margin-bottom:4px;}
+.mode-card p{font-size:11px;color:var(--gray2);}
+
+/* SECTION HEADER */
+.sec-header{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;background:linear-gradient(135deg,var(--red) 0%,var(--red2) 100%);border-radius:12px;margin-bottom:20px;color:#fff;box-shadow:var(--shadow-red);}
+.sec-header h2{font-size:14px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;}
+.sec-header p{font-size:11px;opacity:.8;margin-top:2px;}
+
+/* EMPTY */
+.empty{text-align:center;padding:48px 24px;color:var(--gray2);}
+.empty-icon{font-size:48px;margin-bottom:14px;opacity:.4;}
+.empty h3{font-size:15px;font-weight:700;margin-bottom:6px;color:var(--gray);}
+.empty p{font-size:12px;}
+
+/* EXPORT CARDS */
+.export-card{border:1px solid var(--gray4);border-radius:14px;padding:28px;text-align:center;background:var(--white);transition:box-shadow .2s;}
+.export-card:hover{box-shadow:var(--shadow-md);}
+.ec-icon{font-size:44px;margin-bottom:14px;}
+.ec-count{font-size:36px;font-weight:800;font-family:var(--mono);margin-bottom:4px;}
+
+/* FIELD ROW */
+.field-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--gray6);border-radius:8px;border:1px solid var(--gray4);}
+.field-label{font-size:10px;font-weight:700;color:var(--gray2);text-transform:uppercase;letter-spacing:.8px;}
+.field-val{font-size:12px;font-weight:700;color:var(--dark);}
+
+/* WARNING BANNER */
+.warn-banner{background:var(--orange-dim);border:1.5px solid var(--orange);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:var(--orange);}
+
+/* UTILS */
+.flex{display:flex;align-items:center;}
+.flex-between{display:flex;align-items:center;justify-content:space-between;}
+.gap-8{gap:8px;}.gap-12{gap:12px;}
+.mono{font-family:var(--mono);}
+.text-sm{font-size:12px;}.text-xs{font-size:11px;}.text-muted{color:var(--gray2);}
+.divider{border:none;border-top:1px solid var(--gray4);margin:16px 0;}
+.scroll{overflow-y:auto;}
+
+/* FOOTER */
+.app-footer{border-top:1px solid var(--gray4);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;background:var(--white);}
+.footer-logo img{height:32px;object-fit:contain;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+// ── CATALOG DATA PLACEHOLDER ──
+const LOGO_SRC = 'data:image/png;base64,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';
+const CAT_PROCESOS = [{"id": "EXT", "desc": "01 Extracción y Acarreo", "no": 1}, {"id": "TRI", "desc": "02 Trituración", "no": 2}, {"id": "LPI", "desc": "26 Lavado de Piedra", "no": 26}, {"id": "AGR", "desc": "03 Agregados", "no": 3}, {"id": "CAR", "desc": "12 Carbonatos", "no": 12}, {"id": "MBI", "desc": "04 Manejo de Biomasa", "no": 4}, {"id": "MCS", "desc": "05 Manejo de combustible sólido", "no": 5}, {"id": "MCG", "desc": "06 Manejo de Combustible Gas", "no": 6}, {"id": "MPI", "desc": "07 Manejo de Piedra", "no": 7}, {"id": "CAL", "desc": "08 Calcinación", "no": 8}, {"id": "MCV", "desc": "09 Manejo de Cal Viva", "no": 9}, {"id": "BRI", "desc": "10 Briqueteado", "no": 10}, {"id": "POX", "desc": "11 Pulverizado de Oxido", "no": 11}, {"id": "HID", "desc": "13 Hidratación", "no": 13}, {"id": "EPA", "desc": "14 Envase y Paletizado", "no": 14}, {"id": "ACA", "desc": "15 Almacena y Carga", "no": 15}, {"id": "CCP", "desc": "16 Carbonato de Calcio Precipitado", "no": 16}, {"id": "ACO", "desc": "17 Aire Comprimido", "no": 17}, {"id": "REA", "desc": "18 Red Eléctrica Alta y Media Tensión", "no": 18}, {"id": "SGE", "desc": "19 Servicios Generales", "no": 19}, {"id": "MLA", "desc": "Mezclas Listas Lavado", "no": 20}, {"id": "MSE", "desc": "Mezclas Listas Secado", "no": 21}, {"id": "MPA", "desc": "Mezclas Listas Preparacion de arenas", "no": 22}, {"id": "MDM", "desc": "Mezclas Listas Dosificacion y Mezclado", "no": 23}, {"id": "MEN", "desc": "Mezclas Listas Envase", "no": 24}, {"id": "MCE", "desc": "Mezclas Listas Carga y Estiba", "no": 25}, {"id": "LCA", "desc": "Lechada de Cal", "no": null}];
+const CAT_ACTIVOS = [{"id": "ASI", "desc": "Activador de Silo"}, {"id": "AGI", "desc": "Agitador"}, {"id": "ACO", "desc": "Aire Acondicionado"}, {"id": "ABP", "desc": "Alimentador de Banda Pesadora"}, {"id": "ABV", "desc": "Alimentador de Banda Volumetrico"}, {"id": "AGR", "desc": "Alimentador grizzly"}, {"id": "AHP", "desc": "Alimentador helicoidal Pesador"}, {"id": "AHV", "desc": "Alimentador Helicoidal Volumetrico"}, {"id": "APL", "desc": "Alimentador placas"}, {"id": "ARE", "desc": "Alimentador Reciprocante"}, {"id": "ASV", "desc": "Alimentador sacos vacíos"}, {"id": "AVI", "desc": "Alimentador vibratorio"}, {"id": "AWO", "desc": "Alimentador Wobbler"}, {"id": "ARX", "desc": "Analizador de Rayos X"}, {"id": "ABM", "desc": "Apilador de Banda Movil"}, {"id": "APS", "desc": "Aplanador de Sacos"}, {"id": "APO", "desc": "Aspiradora de polvos"}, {"id": "BAR", "desc": "Barredora"}, {"id": "BAS", "desc": "Bascula"}, {"id": "BCA", "desc": "Bascula Camionera"}, {"id": "UPS", "desc": "Bateria de respaldo"}, {"id": "BCE", "desc": "Bomba centrífuca"}, {"id": "BDP", "desc": "Bomba de desplazamiento positivo"}, {"id": "BNO", "desc": "Bomba Noria"}, {"id": "BRI", "desc": "Briqueteadora"}, {"id": "CAM", "desc": "Camión"}, {"id": "CCE", "desc": "Camion cerrado"}, {"id": "CVO", "desc": "Camión de Volteo"}, {"id": "CPI", "desc": "Camion Pipa"}, {"id": "CTT", "desc": "Camion tipo tolva"}, {"id": "CAI", "desc": "Cañon Aire"}, {"id": "CHI", "desc": "Chimenea"}, {"id": "CIC", "desc": "Ciclón"}, {"id": "CLH", "desc": "Clapeta Hidráulica"}, {"id": "CPO", "desc": "Colector de polvos"}, {"id": "CPB", "desc": "Colector tipo bin vent"}, {"id": "COA", "desc": "Compresor de aire"}, {"id": "CAG", "desc": "Compuerta Agua"}, {"id": "CEX", "desc": "Compuerta de explosión"}, {"id": "PLC", "desc": "Controlador Lógico Programable"}, {"id": "CCI", "desc": "Criba Circular"}, {"id": "CHF", "desc": "Criba Horizontal Alta Frecuencia"}, {"id": "CIF", "desc": "Criba Inclinada Alta Frecuencia"}, {"id": "CIE", "desc": "Criba Inclinada Excentrica"}, {"id": "CLA", "desc": "Criba Lavadora"}, {"id": "CRO", "desc": "Criba Rotativa"}, {"id": "CSC", "desc": "Criba Scalper"}, {"id": "DTR", "desc": "Descargador de trenes"}, {"id": "DME", "desc": "Detector de metales"}, {"id": "DRU", "desc": "Disco de Ruptura"}, {"id": "DIV", "desc": "Diversor"}, {"id": "DUM", "desc": "Dumper"}, {"id": "ECA", "desc": "Elevador de cangilones"}, {"id": "ESE", "desc": "Elevador de Servicio"}, {"id": "ELS", "desc": "Eliminador de sacos"}, {"id": "ERE", "desc": "Enfriador Refrigerativo"}, {"id": "ESS", "desc": "Envasadora de super sacos"}, {"id": "ENV", "desc": "Envasadora en linea"}, {"id": "ENR", "desc": "Envasadora rotatoria"}, {"id": "ENO", "desc": "Envolvedora"}];
+const CAT_ZONAS = [{"id": "AADIT", "desc": "Alimentacion de Aditivo"}, {"id": "AAGUA", "desc": "Alimentacion Agua"}, {"id": "ACAVI", "desc": "Alimentacion de Cal Viva"}, {"id": "ACOMB", "desc": "Aire de Combustion"}, {"id": "AECI1", "desc": "Aire de Enfriamiento de Cilindro Cuba 1"}, {"id": "AECI2", "desc": "Aire de Enfriamiento de Cilindro Cuba 2"}, {"id": "AECIL", "desc": "Aire de Enfriamiento de Cilindro"}, {"id": "AECO1", "desc": "Aire de Enfriamiento de Cono Cuba 1"}, {"id": "AECO2", "desc": "Aire de Enfriamiento de Cono Cuba 2"}, {"id": "AECON", "desc": "Aire de Enfriamiento de Cono"}, {"id": "AENF1", "desc": "Aire de Enfriamiento Cuba 1"}, {"id": "AENF2", "desc": "Aire de Enfriamiento Cuba 2"}, {"id": "AENFR", "desc": "Aire de Enfriamiento"}, {"id": "AENL1", "desc": "Aire de Enfriamiento a Lanzas Cuba 1"}, {"id": "AENL2", "desc": "Aire de Enfriamiento a Lanzas Cuba 2"}, {"id": "AENLA", "desc": "Aire de Enfriamiento a Lanzas"}, {"id": "ALIME", "desc": "Alimentacion"}, {"id": "ATCB1", "desc": "Aire de Transporte de Combustible Solido Biomasa Cuba 1"}, {"id": "ATCB2", "desc": "Aire de Transporte de Combustible Solido Biomasa Cuba 2"}, {"id": "ATCBM", "desc": "Aire de Transporte de Combustible Solido Biomasa en Manifold"}, {"id": "ATCS1", "desc": "Aire de Transporte de Combustible Solido Cuba 1"}, {"id": "ATCS2", "desc": "Aire de Transporte de Combustible Solido Cuba 2"}, {"id": "ATCSB", "desc": "Aire de Transporte de Combustible Solido Biomasa Principal"}, {"id": "ATCSM", "desc": "Aire de Transporte de Combustible Solido en Manifold"}, {"id": "ATCSO", "desc": "Aire de Transporte de Combustible Solido"}, {"id": "ATPC1", "desc": "Aire de Transporte de Polvos de Colector Cuba 1"}, {"id": "ATPC2", "desc": "Aire de Transporte de Polvos de Colector Cuba 2"}, {"id": "ATPCO", "desc": "Aire de Transporte de Polvos de Colector"}, {"id": "ATRAN", "desc": "Aire de Transporte"}, {"id": "BOQUI", "desc": "Boquilla"}, {"id": "CANA1", "desc": "Canal Cuba 1"}, {"id": "CANA2", "desc": "Canal Cuba 2"}, {"id": "CANAL", "desc": "Canal"}, {"id": "CARG1", "desc": "Carga Cuba 1"}, {"id": "CARG2", "desc": "Carga Cuba 2"}, {"id": "CARGA", "desc": "Carga Parte superior de Horno"}, {"id": "CHIM1", "desc": "Chimenea Cuba 1"}, {"id": "CHIM2", "desc": "Chimenea Cuba 2"}, {"id": "CILI1", "desc": "Cilindro Cuba 1"}, {"id": "CILI2", "desc": "Cilindro Cuba 2"}, {"id": "CILIN", "desc": "Cilindro"}, {"id": "CMOLI", "desc": "Clasificacion y Molienda"}, {"id": "CONSU", "desc": "Consumo"}, {"id": "CPOLV", "desc": "Colector de Polvos"}, {"id": "CSOLI", "desc": "Combustible Solido"}, {"id": "CSOPL", "desc": "Casa de Sopladores"}, {"id": "DESCA", "desc": "Descarga"}, {"id": "ENELE", "desc": "Energia Electrica"}, {"id": "ENSAL", "desc": "Entrada Salida"}, {"id": "ENTRA", "desc": "Entrada"}, {"id": "HBEAT", "desc": "Heart Beat"}, {"id": "HIDRA", "desc": "Hidratador"}, {"id": "ICLDE", "desc": "Indicador Clave de Desempeño"}, {"id": "INFER", "desc": "Nivel Inferior"}, {"id": "LANZ1", "desc": "Lanzas Cuba 1"}, {"id": "LANZ2", "desc": "Lanzas Cuba 2"}, {"id": "LANZA", "desc": "Lanza"}, {"id": "MEAE1", "desc": "Mesa A Exterior Cuba 1"}, {"id": "MEAE2", "desc": "Mesa A Exterior Cuba 2"}, {"id": "MEAI1", "desc": "Mesa A Interior Cuba 1"}, {"id": "MEAI2", "desc": "Mesa A Interior Cuba 2"}, {"id": "MEBE1", "desc": "Mesa B Exterior Cuba 1"}, {"id": "MEBE2", "desc": "Mesa B Exterior Cuba 2"}, {"id": "MEBI1", "desc": "Mesa B Interior Cuba 1"}, {"id": "MEBI2", "desc": "Mesa B Interior Cuba 2"}, {"id": "MESA", "desc": "Mesa de Descarga"}, {"id": "MESA1", "desc": "Mesa Cuba 1"}, {"id": "MESA2", "desc": "Mesa Cuba 2"}, {"id": "MHIDR", "desc": "Molienda de Hidroxido"}, {"id": "MPIED", "desc": "Manejo de Piedra"}, {"id": "PEHID", "desc": "Primer Etapa de Hidratadora"}, {"id": "PELEC", "desc": "Parametro Electrico"}, {"id": "PMANT", "desc": "Plan de Mantenimiento"}, {"id": "PMOSW", "desc": "Parametros Modo de Carga Sandwich"}, {"id": "POCOL", "desc": "Polvos de Colector"}, {"id": "PPROC", "desc": "Parametro de Proceso"}, {"id": "PQUCO", "desc": "Parametros Quality Controller"}, {"id": "PSEGU", "desc": "Produccion de Seguridad"}, {"id": "PTERM", "desc": "Producto Terminado"}, {"id": "RACOM", "desc": "Rack de Aire Comprimido"}, {"id": "RAGAS", "desc": "Rack de Gas"}, {"id": "RAMCV", "desc": "Resepcion, Almacenaje y Molienda de Cal Viva"}, {"id": "RANIT", "desc": "Rack de Nitrogeno"}, {"id": "RPOCO", "desc": "Reinyeccion de Polvos de Colector"}, {"id": "SACI1", "desc": "Soplador de Aire de Enfriamiento de Cilindro 1"}, {"id": "SACI2", "desc": "Soplador de Aire de Enfriamiento de Cilindro 2"}, {"id": "SACO1", "desc": "Soplador de Aire de Combustion 1"}, {"id": "SACO2", "desc": "Soplador de Aire de Enfriamiento de Cono 2"}, {"id": "SAEL1", "desc": "Soplador de Aire de Enfriamiento a Lanzas 1"}, {"id": "SAEL2", "desc": "Soplador de Aire de Enfriamiento a Lanzas 2"}, {"id": "SAEL3", "desc": "Soplador de Aire de Enfriamiento a Lanzas 3"}, {"id": "SAEL4", "desc": "Soplador de Aire de Enfriamiento a Lanzas 4"}, {"id": "SAEN1", "desc": "Soplador de Aire de Enfriamiento1"}, {"id": "SAEN2", "desc": "Soplador de Aire de Enfriamiento2"}, {"id": "SAEN3", "desc": "Soplador de Aire de Enfriamiento3"}, {"id": "SAEN4", "desc": "Soplador de Aire de Enfriamiento4"}, {"id": "SAEN5", "desc": "Soplador de Aire de Enfriamiento5"}, {"id": "SALID", "desc": "Salida"}, {"id": "SEHID", "desc": "Segunda Etapa de Hidratadora"}, {"id": "SEPAR", "desc": "Separadores"}, {"id": "SKIPW", "desc": "Skip Winch"}, {"id": "SUPER", "desc": "Nivel Superior"}, {"id": "TANQU", "desc": "Tanque Unidad Hidraulica"}, {"id": "TEHID", "desc": "Tercer Etapa de Hidratadora"}, {"id": "TPEIN", "desc": "Tolva Pesadora Inferior de Horno"}, {"id": "TPES1", "desc": "Tolva Pesadora Superior de Horno Cuba 1"}, {"id": "TPES2", "desc": "Tolva Pesadora Superior de Horno Cuba 2"}, {"id": "TPESU", "desc": "Tolva Pesadora Superior de Horno"}, {"id": "TPRIM", "desc": "Trituracion Primaria"}, {"id": "TSECU", "desc": "Trituracion Secundaria"}, {"id": "UHIDR", "desc": "Unidad Hidraulica"}, {"id": "TCLAS", "desc": "Trituracion Clasificacion"}, {"id": "TALMA", "desc": "Almacenes de Piedra"}, {"id": "ACOMP", "desc": "Aire Comprimido"}, {"id": "MEELE", "desc": "Medicion de Energia Electrica"}, {"id": "AMOLI", "desc": "Alimentacion y Molienda"}, {"id": "ARENA", "desc": "Arenas"}, {"id": "CLASI", "desc": "Clasificacion"}, {"id": "PULVE", "desc": "Pulverizado"}, {"id": "SILTO", "desc": "Silos y Tolvas"}, {"id": "PSECA", "desc": "Pulverizado y Secado"}, {"id": "SINER", "desc": "Sistema de Inertizacion"}, {"id": "TVVEL", "desc": "Temperatura de Variador de Velocidad"}, {"id": "TPIE1", "desc": "Tunel de Piedra 1"}, {"id": "TPIE2", "desc": "Tunel de Piedra 2"}, {"id": "DHOR1", "desc": "Despolve Horno 1"}, {"id": "DHOR2", "desc": "Despolve Horno 2"}, {"id": "DHOR3", "desc": "Despolve Horno 3"}, {"id": "DHOR4", "desc": "Despolve Horno 4"}, {"id": "DHOR5", "desc": "Despolve Horno 5"}, {"id": "CPHO1", "desc": "Carga de Piedra Horno 1"}, {"id": "CPHO2", "desc": "Carga de Piedra Horno 2"}, {"id": "CPHO3", "desc": "Carga de Piedra Horno 3"}, {"id": "CPHO4", "desc": "Carga de Piedra Horno 4"}, {"id": "CPHO5", "desc": "Carga de Piedra Horno 5"}, {"id": "DHO34", "desc": "Despolve Hornos 3 y 4"}, {"id": "SECAD", "desc": "Secados"}, {"id": "MOLIE", "desc": "Molienda"}, {"id": "TDESP", "desc": "Trituracion Despolve"}, {"id": "SCLAS", "desc": "Secado y Clasificado"}, {"id": "RECIR", "desc": "Recirculacion"}, {"id": "TRANS", "desc": "Transporte"}, {"id": "ENVAS", "desc": "Envase"}, {"id": "PALET", "desc": "Paletizadora"}, {"id": "DTRAN", "desc": "Descarga y Transporte"}, {"id": "TARA", "desc": "Tara"}, {"id": "CGRAN", "desc": "Carga a Granel"}];
+const CAT_PLANTAS = [{"id": "ACA", "desc": "Acajete", "pais": "Mexico"}, {"id": "AGU", "desc": "Aguscalientes", "pais": "Mexico"}, {"id": "APA", "desc": "Apaxco", "pais": "Mexico"}, {"id": "ARE", "desc": "Arequipa", "pais": "Perú"}, {"id": "BER", "desc": "Bernal", "pais": "Mexico"}, {"id": "GAR", "desc": "García", "pais": "Mexico"}, {"id": "HER", "desc": "Hermosillo", "pais": "Mexico"}, {"id": "HON", "desc": "Honduras", "pais": "Honduras"}, {"id": "LAJ", "desc": "La Laja", "pais": "Argentina"}, {"id": "LBE", "desc": "Los Berros", "pais": "Argentina"}, {"id": "MAC", "desc": "Mezclas Acajete", "pais": "Mexico"}, {"id": "MMO", "desc": "Mezclas Monterrey", "pais": "Mexico"}, {"id": "MIC", "desc": "Michoacan", "pais": "Mexico"}, {"id": "MON", "desc": "Monterrey", "pais": "Mexico"}, {"id": "PAD", "desc": "Padre Bueno", "pais": "Argentina"}, {"id": "POZ", "desc": "Pozos", "pais": "Mexico"}, {"id": "PRO", "desc": "Progreso", "pais": "Mexico"}, {"id": "RIO", "desc": "Rio Claro", "pais": "Colombia"}, {"id": "SAN", "desc": "Santiago", "pais": "Chile"}, {"id": "SCR", "desc": "Santa Cruz", "pais": "Mexico"}, {"id": "SFR", "desc": "San Francisco", "pais": "Mexico"}, {"id": "SLP", "desc": "San Luis Potosi", "pais": "Mexico"}, {"id": "TEC", "desc": "Tecolotlan", "pais": "Mexico"}, {"id": "TOR", "desc": "Torreon", "pais": "Mexico"}, {"id": "VIZ", "desc": "Vizarron", "pais": "Mexico"}, {"id": "ZLA", "desc": "Zapala", "pais": "Argentina"}, {"id": "ZAP", "desc": "Zapoltitic", "pais": "Mexico"}, {"id": "VIL", "desc": "Villicum", "pais": "Argentina"}, {"id": "MCL", "desc": "Monclova", "pais": "Mexico"}, {"id": "CON", "desc": "Condorcocha", "pais": "Perú"}];
+const CAT_INSTRUMENTOS = [{"isa": "ACSC", "desc": "Aire de Combustion de Sopladores Incluyendo Cilindro suspendido"}, {"isa": "AGAC", "desc": "Alimentacion Combustible Gaseoso por Ciclo"}, {"isa": "ASBC", "desc": "Alimentacion Combustible Solido Biomasa por Ciclo"}, {"isa": "ASOC", "desc": "Alimentacion Combustible Solido por Ciclo"}, {"isa": "CCIC", "desc": "Cal por Ciclo"}, {"isa": "CELE", "desc": "Consumo Electrico en kWh"}, {"isa": "CICL", "desc": "Ciclos"}, {"isa": "DMET", "desc": "Deteccion de Metal"}, {"isa": "EACT", "desc": "Energia Activa kWh"}, {"isa": "EAPA", "desc": "Energia Aparente kWh"}, {"isa": "ECCA", "desc": "Estado de Cuba en Calcinacion "}, {"isa": "ECIC", "desc": "Eficicencia por Ciclo"}, {"isa": "EDC1", "desc": "Estado de Descarga SH1"}, {"isa": "EDC2", "desc": "Estado de Descarga SH2"}, {"isa": "EEQU", "desc": "Estado de Equipo (0=off 1 = on)"}, {"isa": "EFIC", "desc": "Eficicencia"}, {"isa": "EIPC", "desc": "Estado de Inyecion de Polvos de Colector"}, {"isa": "EPPR", "desc": "Estado Prueba de Presion"}, {"isa": "EQCO", "desc": "Estado Quality Controller"}, {"isa": "EREA", "desc": "Energia Reactiva kWh"}, {"isa": "ET", "desc": "Voltaje"}, {"isa": "FACL", "desc": "Factor de Aire de Combustion atraves de Lanzas"}, {"isa": "FAEN", "desc": "Factor de Aire de Enfriamiento"}, {"isa": "FAEX", "desc": "Factor de Aire de Exeso"}, {"isa": "FCGA", "desc": "Flujo Combustible Gaseoso "}, {"isa": "FCSB", "desc": "Flujo Combustible Solido Biomasa"}, {"isa": "FCSO", "desc": "Flujo Combustible Solido "}, {"isa": "FPCA", "desc": "Factor Piedra Cal"}, {"isa": "FPOT", "desc": "Factor de Potencia"}, {"isa": "FT", "desc": "Flujo"}, {"isa": "FTAC", "desc": "Flujo Total de Aire de Combustion  nominal "}, {"isa": "FTAE", "desc": "Flujo Total de Aire de Enfriamiento Nominal"}, {"isa": "GC", "desc": "Posicion de Valvula Nominal"}, {"isa": "GT", "desc": "Posicion de Valvula Actual"}, {"isa": "GV", "desc": "Posicion de Valvula"}, {"isa": "IEEN", "desc": "Indicador de eficiencia Energetica kWh/Ton"}, {"isa": "IFAC", "desc": "Indicador Flujo de Aire de Combustion por Kg de Cal"}, {"isa": "IFAS", "desc": "Indicador Flujo de Aire de Combustion por Kg de Combustible Solido"}, {"isa": "IT", "desc": "Corriente"}, {"isa": "KE", "desc": "Tiempo"}, {"isa": "LAEQ", "desc": "Limite Alto Eficiencia Quality Controller"}, {"isa": "LAFQ", "desc": "Limite Alto de FAEX Quality Controller"}, {"isa": "LBEQ", "desc": "Limite Bajo de Eficienciat Quality Controller"}, {"isa": "LBFQ", "desc": "Limite Bajo de FAEX Quality Controller"}, {"isa": "LDE", "desc": "Diferencial de Nivel"}, {"isa": "LE", "desc": "Nivel"}, {"isa": "LSH", "desc": "Swich de Nivel Alto"}, {"isa": "LSHH", "desc": "Swich de Nivel Alto Alto "}, {"isa": "LSL", "desc": "Swich de Nivel Bajo"}, {"isa": "ME", "desc": "Humedad Relativa"}, {"isa": "NCED", "desc": "Numero de ciclos de Evaluacion  Quality Controller Diferencial de Temperatura"}, {"isa": "NCET", "desc": "Numero de ciclos de Evaluacion Quality Controller Temperatura"}, {"isa": "NCPC", "desc": "Numero de capas piedra chica modo sandwich"}, {"isa": "NCPG", "desc": "Numero de capas piedra Grande modo sandwich"}, {"isa": "OEE", "desc": "OEE Horno"}, {"isa": "OITQ", "desc": "Offset de Inicio de Tiempo de Quemado Quality Controller"}, {"isa": "PACT", "desc": "Potencia Activa kW"}, {"isa": "PAEC", "desc": "Promedio de Aire de Enfriamiento a Cono"}, {"isa": "PAPA", "desc": "Potencia Aparente kVA"}, {"isa": "PCAB", "desc": "Poder Calorifico Combustible Solido Biomasa"}, {"isa": "PCAG", "desc": "Poder Calorifico Cumbustible Gaseoso"}, {"isa": "PCAS", "desc": "Poder Calorifico Combustible Solido"}, {"isa": "PCIC", "desc": "Piedra Por Ciclo"}, {"isa": "PDC", "desc": "Diferencial de Presion para Control"}, {"isa": "PDT", "desc": "Diferencial de Presion "}, {"isa": "PELE", "desc": "Potencia Electrica en Kw"}, {"isa": "PLC", "desc": "PLC"}, {"isa": "PPCS", "desc": "Porcentaje de Poder Calorifico atraves de Comb Solido"}, {"isa": "PREA", "desc": "Potencia Reactiva kVAr"}, {"isa": "PROD", "desc": "Produccion "}, {"isa": "PSH", "desc": "Switch de Presion Alta"}, {"isa": "PSHH", "desc": "Switch de Presion Alta Alta"}, {"isa": "PSL", "desc": "Switch de Presion Baja "}, {"isa": "PSLL", "desc": "Switch de Presion Baja Baja"}, {"isa": "PT", "desc": "Presion"}, {"isa": "QE", "desc": "Porcentaje"}, {"isa": "RC", "desc": "Numero"}, {"isa": "SC", "desc": "Revoluciones por Minuto para Control"}, {"isa": "ST", "desc": "Revoluciones por Minuto "}, {"isa": "TACB", "desc": "Tiempo de Alimentacion de Combustible Solido Biomasa"}, {"isa": "TACS", "desc": "Tiempo de Alimentacion de Combustible Solido"}, {"isa": "TAPI", "desc": "Tamaño de Piedra"}, {"isa": "TC", "desc": "Temperatura para Control"}, {"isa": "TCIC", "desc": "Tiempo de Ciclo"}, {"isa": "TDC", "desc": "Diferencial de Temperatura "}, {"isa": "TE", "desc": "Temperatura"}, {"isa": "TIPI", "desc": "Tipo de Piedra Caliza "}, {"isa": "TOHD", "desc": "Tiempo de Operación de Horno por Dia"}, {"isa": "TOPT", "desc": "Tiempo de Operación Totalizada"}, {"isa": "TOPV", "desc": "Tiempo de Operación en Vacio"}, {"isa": "TPAR", "desc": "Tiempo de Paro"}, {"isa": "TQFB", "desc": "Tiempo de Quemado Fuera Comb Solido Biomasa"}, {"isa": "TQFG", "desc": "Tiempo de Quemado Fuera Comb Gaseoso"}, {"isa": "TQFS", "desc": "Tiempo de Quemado Fuera Comb Solido"}, {"isa": "TQUE", "desc": "Tiempo de Quemado"}, {"isa": "TREV", "desc": "Tiempo Reversible"}, {"isa": "TRLA", "desc": "Tiempo Reversible Largo"}, {"isa": "UE", "desc": "Sensor de Ruido"}, {"isa": "VE", "desc": "Vibracion "}, {"isa": "WE", "desc": "Masa"}, {"isa": "XE ", "desc": "Sensor de flama"}, {"isa": "ZT", "desc": "Sensor Distancia"}, {"isa": "TMPR", "desc": "Tiempo Maximo de Paro para Reinicio"}, {"isa": "TMAA", "desc": "Tiempo Minimo de Arranque para Activar"}, {"isa": "DTQC", "desc": "Delta de Temperatura de Quality Control System"}, {"isa": "VVI", "desc": "Velocidad en Vibraciones(mm/s)"}, {"isa": "RMS", "desc": "Amplitud de Vibraciones (mm)"}, {"isa": "FREC", "desc": "Frecuencia"}, {"isa": "EDCF", "desc": "Estado de Control PID de Flujo"}, {"isa": "GPID", "desc": "Ganancia PID"}, {"isa": "TDER", "desc": "Tiempo Derivativo"}, {"isa": "TINT", "desc": "Tiempo Integral"}, {"isa": "FUNN", "desc": "Flujo Nominal Normalizado"}, {"isa": "ADER", "desc": "Accion Derivado"}, {"isa": "AINT", "desc": "Accion Integral"}, {"isa": "APRO", "desc": "Accion Proporcional"}, {"isa": "PTP", "desc": "Pendiente Temperatura Canal"}, {"isa": "PPT", "desc": "Pendiente Presion Canal"}, {"isa": "PPDT", "desc": "Pendiente Diferencial de Presion "}, {"isa": "NSU", "desc": "Numero de Sacos Utilizados"}, {"isa": "NSE", "desc": "Numero de Sacos Envasados"}];
+const CAT_VARIABLES = [{"id": "AVE", "desc": "Promedio"}, {"id": "DIG", "desc": "Digital"}, {"id": "COD", "desc": "Codigo"}, {"id": "CV", "desc": "Variable de Salida de control del PLC"}, {"id": "LAB", "desc": "Entrada de Laboratorio"}, {"id": "MAN", "desc": "Entrada Manual"}, {"id": "CAL", "desc": "Valor Calculado"}, {"id": "AUTO", "desc": "Modo Automatico PID"}, {"id": "KD", "desc": "PID Ganacia Derivativa"}, {"id": "KI", "desc": "PID Ganacia Integral"}, {"id": "KP", "desc": "PID Ganancia Proporcional"}, {"id": "RAT", "desc": "PID Ratio Control"}, {"id": "REM", "desc": "PID Control en Modo Remoto"}, {"id": "PV", "desc": "Variable de Proceso de Instrumento en Campo"}, {"id": "RSP", "desc": "Set Point Remoto"}, {"id": "SP", "desc": "Set Point de Operador"}, {"id": "TOT", "desc": "Totalizador"}, {"id": "FIL", "desc": "Filtro"}];
+const CAT_UNIDADES = [{"id": "%", "desc": "Porcentaje"}, {"id": "°C", "desc": "Grados Centigrados"}, {"id": "A", "desc": "Ampers"}, {"id": "bar", "desc": "Bars"}, {"id": "delta °C", "desc": "Diferencial Grados Centigrados"}, {"id": "gr/cm3", "desc": "Densidad"}, {"id": "h", "desc": "Horas"}, {"id": "kCal/kg", "desc": "KiloCalorias por Hora"}, {"id": "kcal/Nm3", "desc": "kilo Calorias por Metro Cubico Normalizado"}, {"id": "kg", "desc": "Kilogramos"}, {"id": "kW", "desc": "KiloWatts"}, {"id": "kVA", "desc": "Potencia Aparente"}, {"id": "kVAr", "desc": "Potencia Reactiva"}, {"id": "kWh", "desc": "Kilowatts por Hora"}, {"id": "kVAh", "desc": "kiloVolt Amper por Hora"}, {"id": "kVArh", "desc": "kiloVolt Amper Reactivo por Hora"}, {"id": "kWh/t", "desc": "KiloWatts Hora por Tonelada"}, {"id": "m3/h", "desc": "Metros Cubicos por Hora"}, {"id": "mbar", "desc": "Mili Bars"}, {"id": "Mcal", "desc": "Mega Calorias"}, {"id": "Mcal/h", "desc": "Mega Calorias por Hora"}, {"id": "mm", "desc": "Milimetros"}, {"id": "Nm3", "desc": "Metros Cubicos Normales"}, {"id": "Nm3/h", "desc": "Metros Cubicos Normalizados por Hora"}, {"id": "Nm3/kg Fuel", "desc": "Metros Cubicos Normalizados  Por Kilogramo de Combustible"}, {"id": "Nm3/kg lime", "desc": "Metros Cubicos Normalizados por Kilogramo de Cal"}, {"id": "ppm", "desc": "Partes Por Millon"}, {"id": "RPM", "desc": "Revoluciones Por Minuto"}, {"id": "s", "desc": "Segundos"}, {"id": "t", "desc": "Toneladas"}, {"id": "t/h", "desc": "Toneladas por Hora"}, {"id": "t/d", "desc": "Toneladas por Dia"}, {"id": "-", "desc": "Adimencional"}, {"id": "°E", "desc": "Grados Engler Viscosidad"}, {"id": "ml/15gr", "desc": "Flow Point CCP"}, {"id": "cm3/5min", "desc": "Reactividad Quimica"}, {"id": "l/h", "desc": "Litros por Hora"}, {"id": "l", "desc": "Litros"}, {"id": "l/t", "desc": "Litros por Tonelada"}, {"id": "Hz", "desc": "Hertz"}, {"id": "m3", "desc": "Metros Cubicos"}, {"id": "V", "desc": "Volts"}, {"id": "min", "desc": "Minutos"}, {"id": "in ", "desc": "Pulgadas"}, {"id": "mm/s", "desc": "Milimetros por Segundo"}];
+// ── END CATALOG DATA ──
+
+const { useState, useRef, useMemo, useCallback } = React;
+
+const USERS_INIT = [
+  {id:1,name:'Administrador Calidra',email:'admin@calidra.com',password:'Calidra2026!',role:'admin',plant:'Todas',active:true,initials:'JV',color:'#D0021B'},
+  {id:2,name:'Ingeniero Proceso',email:'ingeniero@calidra.com',password:'Calidra2026!',role:'engineer',plant:'La Laja',active:true,initials:'IP',color:'#2563EB'},
+  {id:3,name:'Desarrollador PI',email:'desarrollador@calidra.com',password:'Calidra2026!',role:'developer',plant:'Todas',active:true,initials:'DP',color:'#059669'},
+];
+
+const TEMPLATES = [
+  {n:'Transportador de Banda',p:'TBA',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'II',ni:'01',zona:'CARGA',var:'PV',uom:'A',desc:'Corriente de Carga'}]},
+  {n:'Transportador de Banda con Corriente',p:'TBA',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'II',ni:'01',zona:'CARGA',var:'PV',uom:'A',desc:'Corriente de Linea'}]},
+  {n:'Transportador de Banda con Variador de Frecuencia',p:'TBA',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'II',ni:'01',zona:'CARGA',var:'PV',uom:'A',desc:'Corriente de Carga'},{ind:'SI',ni:'01',zona:'VELOC',var:'PV',uom:'m/s',desc:'Velocidad Actual'}]},
+  {n:'Transportador de Banda con Puente Pesador',p:'TBA',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'WI',ni:'01',zona:'FLUJO',var:'PV',uom:'t/h',desc:'Flujo Actual'},{ind:'II',ni:'01',zona:'CARGA',var:'PV',uom:'A',desc:'Corriente de Carga'}]},
+  {n:'Transportador Helicoidal',p:'THE',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'}]},
+  {n:'Transportador Helicoidal con Corriente',p:'THE',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'II',ni:'01',zona:'CARGA',var:'PV',uom:'A',desc:'Corriente de Linea'}]},
+  {n:'Transportador Helicoidal con Velocidad',p:'THE',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'SI',ni:'01',zona:'VELOC',var:'PV',uom:'rpm',desc:'Velocidad Actual'}]},
+  {n:'Colector de Polvos Base',p:'CPO',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'PDI',ni:'01',zona:'PRESI',var:'PV',uom:'mbar',desc:'Presion Diferencial'}]},
+  {n:'Colector de Polvos con Temperaturas',p:'CPO',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'PDI',ni:'01',zona:'PRESI',var:'PV',uom:'mbar',desc:'Presion Diferencial'},{ind:'TI',ni:'01',zona:'TEMPE',var:'PV',uom:'°C',desc:'Temperatura'}]},
+  {n:'Silo con Radar',p:'SIL',c:'Activos',attrs:[{ind:'LI',ni:'01',zona:'NIVEL',var:'PV',uom:'m',desc:'Nivel Actual'}]},
+  {n:'Silo con Peso',p:'SIL',c:'Activos',attrs:[{ind:'WI',ni:'01',zona:'PESOS',var:'PV',uom:'t',desc:'Peso Actual'}]},
+  {n:'Silo con Temperaturas',p:'SIL',c:'Activos',attrs:[{ind:'LI',ni:'01',zona:'NIVEL',var:'PV',uom:'m',desc:'Nivel Actual'},{ind:'TI',ni:'01',zona:'TEMPE',var:'PV',uom:'°C',desc:'Temperatura'}]},
+  {n:'Silo con Radar y Peso',p:'SIL',c:'Activos',attrs:[{ind:'LI',ni:'01',zona:'NIVEL',var:'PV',uom:'m',desc:'Nivel Actual'},{ind:'WI',ni:'01',zona:'PESOS',var:'PV',uom:'t',desc:'Peso Actual'}]},
+  {n:'Tolva con Nivel',p:'TAM',c:'Activos',attrs:[{ind:'LI',ni:'01',zona:'NIVEL',var:'PV',uom:'m',desc:'Nivel Actual'}]},
+  {n:'Tolva con Detector de Nivel Alto y Bajo',p:'TAM',c:'Activos',attrs:[{ind:'LSH',ni:'01',zona:'NIVEL',var:'DIG',uom:'',desc:'Detector Nivel Alto'},{ind:'LSL',ni:'01',zona:'NIVEL',var:'DIG',uom:'',desc:'Detector Nivel Bajo'}]},
+  {n:'Tolva con Nivel y Detectores de Nivel Alto y Bajo',p:'TAM',c:'Activos',attrs:[{ind:'LI',ni:'01',zona:'NIVEL',var:'PV',uom:'m',desc:'Nivel Actual'},{ind:'LSH',ni:'01',zona:'NIVEL',var:'DIG',uom:'',desc:'Detector Nivel Alto'},{ind:'LSL',ni:'01',zona:'NIVEL',var:'DIG',uom:'',desc:'Detector Nivel Bajo'}]},
+  {n:'Tolva Pesadora con Nivel Alto y Bajo',p:'TPE',c:'Activos',attrs:[{ind:'WI',ni:'01',zona:'PESOS',var:'PV',uom:'t',desc:'Peso Actual'},{ind:'LSH',ni:'01',zona:'NIVEL',var:'DIG',uom:'',desc:'Detector Nivel Alto'},{ind:'LSL',ni:'01',zona:'NIVEL',var:'DIG',uom:'',desc:'Detector Nivel Bajo'}]},
+  {n:'Alimentador Vibratorio',p:'AVI',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'}]},
+  {n:'Alimentador Vibratorio Bidireccional',p:'AVI',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'II',ni:'01',zona:'CARGA',var:'PV',uom:'A',desc:'Corriente de Linea'}]},
+  {n:'Alimentador Helicoidal Volumetrico',p:'AHV',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'SI',ni:'01',zona:'VELOC',var:'PV',uom:'rpm',desc:'Velocidad Actual'},{ind:'II',ni:'01',zona:'CARGA',var:'PV',uom:'A',desc:'Corriente de Linea'}]},
+  {n:'Alimentador de Banda Pesador ABP-XX',p:'ABP',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'WI',ni:'01',zona:'FLUJO',var:'PV',uom:'t/h',desc:'Flujo Actual'}]},
+  {n:'Ventilador Centrifugo',p:'VCE',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'II',ni:'01',zona:'CARGA',var:'PV',uom:'A',desc:'Corriente de Linea'}]},
+  {n:'Ventilador Centrifugo Horno Maerz',p:'VCE',c:'Calcinacion',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'II',ni:'01',zona:'CARGA',var:'PV',uom:'A',desc:'Corriente de Linea'},{ind:'PI',ni:'01',zona:'PRESI',var:'PV',uom:'mbar',desc:'Presion Descarga'}]},
+  {n:'Valvula Rotatoria',p:'VRO',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'}]},
+  {n:'Valvula Rotatoria Alimentadora',p:'VRO',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'II',ni:'01',zona:'CARGA',var:'PV',uom:'A',desc:'Corriente de Linea'}]},
+  {n:'Valvula Triversora',p:'VTR',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'ZSO',ni:'01',zona:'POSIC',var:'DIG',uom:'',desc:'Posicion Abierta'},{ind:'ZSC',ni:'01',zona:'POSIC',var:'DIG',uom:'',desc:'Posicion Cerrada'}]},
+  {n:'Elevador de Canjilones',p:'ECA',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'II',ni:'01',zona:'CARGA',var:'PV',uom:'A',desc:'Corriente de Linea'}]},
+  {n:'Ciclon',p:'CIC',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'}]},
+  {n:'Criba Base',p:'CRB',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'}]},
+  {n:'Criba con Amperaje',p:'CRB',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'II',ni:'01',zona:'CARGA',var:'PV',uom:'A',desc:'Corriente de Linea'}]},
+  {n:'Molino de Martillos',p:'MMA',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'II',ni:'01',zona:'CARGA',var:'PV',uom:'A',desc:'Corriente Motor'},{ind:'TI',ni:'01',zona:'TEMPR',var:'PV',uom:'°C',desc:'Temperatura Rodamiento'}]},
+  {n:'Molino de Bolas con Disponibilidad',p:'MBO',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'II',ni:'01',zona:'CARGA',var:'PV',uom:'A',desc:'Corriente Motor'}]},
+  {n:'Bomba Centrifuga',p:'BCE',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'FI',ni:'01',zona:'FLUJO',var:'PV',uom:'m3/h',desc:'Flujo Actual'}]},
+  {n:'Tanque de Almacenamiento',p:'TAL',c:'Activos',attrs:[{ind:'LI',ni:'01',zona:'NIVEL',var:'PV',uom:'m',desc:'Nivel Actual'},{ind:'LSH',ni:'01',zona:'NIVEL',var:'DIG',uom:'',desc:'Detector Nivel Alto'},{ind:'LSL',ni:'01',zona:'NIVEL',var:'DIG',uom:'',desc:'Detector Nivel Bajo'}]},
+  {n:'Separador Dinamico',p:'SDI',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'SI',ni:'01',zona:'VELOC',var:'PV',uom:'rpm',desc:'Velocidad Actual'}]},
+  {n:'Detector de Metales',p:'DME',c:'Activos',attrs:[{ind:'DMET',ni:'01',zona:'DETEC',var:'DIG',uom:'',desc:'Deteccion de Metal'}]},
+  {n:'Manga Retractil',p:'MRE',c:'Activos',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'}]},
+  {n:'CAL 08 Calcinacion',p:'CAL',c:'Calcinacion',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'}]},
+  {n:'Medicion de Gases de Combustion',p:'',c:'Calcinacion',attrs:[{ind:'AI',ni:'01',zona:'GSO2',var:'MAN',uom:'ppm',desc:'Dioxido de Azufre SO2'},{ind:'AI',ni:'01',zona:'GCO2',var:'MAN',uom:'%',desc:'Dioxido de Carbono CO2'},{ind:'AI',ni:'01',zona:'GAO2',var:'MAN',uom:'%',desc:'Oxigeno O2'}]},
+  {n:'CAL 00 Horno Maerz ton/dia Gaseoso',p:'HMZ',c:'Calcinacion',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'CICL',ni:'01',zona:'CICLO',var:'PV',uom:'',desc:'Ciclos'},{ind:'TI',ni:'01',zona:'LANZ1',var:'PV',uom:'°C',desc:'Temperatura Lanza Cuba 1'}]},
+  {n:'CAL 00 Horno Maerz ton/dia Solido',p:'HMZ',c:'Calcinacion',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'CICL',ni:'01',zona:'CICLO',var:'PV',uom:'',desc:'Ciclos'}]},
+  {n:'CAL Ventilador de Colector de Horno',p:'VCE',c:'Calcinacion',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'II',ni:'01',zona:'CARGA',var:'PV',uom:'A',desc:'Corriente de Linea'},{ind:'PI',ni:'01',zona:'PRESI',var:'PV',uom:'mbar',desc:'Presion Descarga'}]},
+  {n:'CAL Soplador Base',p:'SOP',c:'Calcinacion',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'PI',ni:'01',zona:'PRESI',var:'PV',uom:'mbar',desc:'Presion Descarga'}]},
+  {n:'TRI Quebradora de Quijada',p:'QQU',c:'Trituracion',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'II',ni:'01',zona:'CARGA',var:'PV',uom:'A',desc:'Corriente Motor'},{ind:'TI',ni:'01',zona:'TEMPR',var:'PV',uom:'°C',desc:'Temperatura Rodamiento'}]},
+  {n:'TRI Quebradora Basica',p:'QXX',c:'Trituracion',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'II',ni:'01',zona:'CARGA',var:'PV',uom:'A',desc:'Corriente Motor'}]},
+  {n:'TRI Quebradora de Doble Rodillo',p:'QDR',c:'Trituracion',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'II',ni:'01',zona:'CARGA',var:'PV',uom:'A',desc:'Corriente Motor'},{ind:'TI',ni:'01',zona:'TEMPR',var:'PV',uom:'°C',desc:'Temperatura Rodamiento'}]},
+  {n:'TRI Alimentador Grizzly',p:'AGR',c:'Trituracion',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'II',ni:'01',zona:'CARGA',var:'PV',uom:'A',desc:'Corriente de Linea'}]},
+  {n:'TRI Alimentador Apron',p:'APL',c:'Trituracion',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'SI',ni:'01',zona:'VELOC',var:'PV',uom:'m/s',desc:'Velocidad Actual'}]},
+  {n:'TRI Sistema de Supresion de Polvos',p:'SSP',c:'Trituracion',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'}]},
+  {n:'TRI Stone Pile',p:'SPI',c:'Trituracion',attrs:[{ind:'LI',ni:'01',zona:'NIVEL',var:'PV',uom:'m',desc:'Nivel Actual'}]},
+  {n:'HID 00 Hidratacion Proceso',p:'HID',c:'Hidratacion',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'}]},
+  {n:'HID Colector de Polvos',p:'CPO',c:'Hidratacion',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'},{ind:'PDI',ni:'01',zona:'PRESI',var:'PV',uom:'mbar',desc:'Presion Diferencial'}]},
+  {n:'Medidor de Energia Electrica Baja Tension Unifilar',p:'MEE',c:'Energia',attrs:[{ind:'II',ni:'01',zona:'CELIN',var:'PV',uom:'A',desc:'Corriente Linea 1'},{ind:'WI',ni:'01',zona:'POACT',var:'PV',uom:'kW',desc:'Potencia Activa Total'},{ind:'EI',ni:'01',zona:'ENACT',var:'TOT',uom:'kWh',desc:'Energia Activa Total'}]},
+  {n:'Activo Base',p:'XXX',c:'Base',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'}]},
+  {n:'SYS Estatus Sistema',p:'SYS',c:'Sistema',attrs:[{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estatus Sistema'}]},
+];
+
+// ── UTILS ──────────────────────────────────────────────────────────────────────
+const getPrefix = n => { const m = n.match(/^([A-Z]{2,4})-(\d+)/); return m ? {pfx:m[1], num:m[2]} : {pfx:'', num:'01'}; };
+const suggest = name => {
+  const {pfx} = getPrefix(name);
+  if (!pfx) return TEMPLATES.slice(0, 6);
+  const ex = TEMPLATES.filter(t => t.p === pfx);
+  return ex.length > 0 ? ex : TEMPLATES.slice(0, 6);
+};
+const getTemplateDef = name => TEMPLATES.find(t => t.n === name) || null;
+const buildTree = els => {
+  const map = {}, roots = [];
+  els.forEach(e => map[e.path] = {...e, children: []});
+  els.forEach(e => { if (e.parent && map[e.parent]) map[e.parent].children.push(map[e.path]); else roots.push(map[e.path]); });
+  return roots;
+};
+const parseExcel = data => {
+  const out = [];
+  data.forEach((row, i) => {
+    if (i === 0 || row[3] !== 'Element') return;
+    const parent = row[1] || '', name = row[2] || '', tmpl = row[19] || '';
+    out.push({id: i, parent, name, path: parent ? parent + '\\' + name : name, template: tmpl, proceso:'', noProceso:'01', zona:'ESTAD', noActivo: getPrefix(name).num});
+  });
+  return out;
+};
+
+// Suggest proceso from element name/template context
+const suggestProceso = (el) => {
+  const {pfx} = getPrefix(el.name);
+  const map = {TBA:'TRI',CPO:'TRI',QQU:'TRI',QDR:'TRI',QXX:'TRI',AGR:'TRI',APL:'TRI',SPI:'TRI',SSP:'TRI',
+               HMZ:'CAL',SOP:'CAL',VCE:'CAL',CAL:'CAL',
+               AHV:'HID',HID:'HID',ABP:'HID',
+               SIL:'MCV',TAM:'MCV',MCV:'MCV',
+               MEE:'REA'};
+  return map[pfx] || '';
+};
+
+// Build description for a tag
+const buildDesc = (planta, proceso, noProceso, activo, noActivo, zona, indicador, noInd, variable, uom) => {
+  const np = String(noProceso).padStart(2,'0');
+  const na = String(noActivo).padStart(2,'0');
+  const ni = String(noInd).padStart(2,'0');
+  const zonaDesc = CAT_ZONAS.find(z => z.id === zona)?.desc || zona;
+  const indDesc = CAT_INSTRUMENTOS.find(i => i.isa === indicador)?.desc || indicador;
+  const varDesc = CAT_VARIABLES.find(v => v.id === variable)?.desc || variable;
+  const uomPart = uom ? ` [${uom}]` : '';
+  return `${planta}-${proceso}-${np} ${activo}-${na} ${zonaDesc} ${indDesc}${uomPart}`;
+};
+
+// Build PI tag string
+const makePITag = (pl, pr, np, ac, na, ind, ni, zona, v) =>
+  `${pl}-${pr}-${String(np).padStart(2,'0')}-${ac}-${String(na).padStart(2,'0')}.${ind}-${String(ni).padStart(2,'0')}-${zona}.${v}`;
+
+// Build OPC tag string
+const makeOPCTag = (ac, na, ind, ni, zona, v) =>
+  `${ac}_${String(na).padStart(2,'0')}_${ind}_${String(ni).padStart(2,'0')}_${zona}_${v}`;
+
+// ── ICONS ──────────────────────────────────────────────────────────────────────
+const Ico = ({n, s=15}) => {
+  const d = {
+    dashboard: <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>,
+    upload: <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>,
+    tree: <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><path d="M21 15v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>,
+    pi: <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="3" y1="7" x2="21" y2="7"/><path d="M9 7v14M15 7v14"/></svg>,
+    cpu: <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v2M15 2v2M9 22v-2M15 22v-2M2 9h2M2 15h2M22 9h-2M22 15h-2"/></svg>,
+    export: <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>,
+    check: <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>,
+    info: <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>,
+    warn: <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+    user: <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+    lock: <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>,
+    gear: <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M21 12h-2M19.07 19.07l-1.41-1.41M12 21v-2M4.93 19.07l1.41-1.41M3 12h2M4.93 4.93l1.41 1.41M12 3v2"/></svg>,
+    eye: <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+    eyeoff: <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24M1 1l22 22"/></svg>,
+    close: <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+    tag: <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>,
+    map: <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>,
+    plus: <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  };
+  return d[n] || null;
+};
+
+// ── LOGIN ──────────────────────────────────────────────────────────────────────
+const Login = ({onLogin, users}) => {
+  const [email, setEmail] = useState('');
+  const [pass, setPass] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [err, setErr] = useState('');
+  const doLogin = () => {
+    const u = users.find(u => u.email === email && u.password === pass && u.active);
+    if (u) onLogin(u);
+    else setErr('Credenciales incorrectas o usuario inactivo.');
+  };
+  return (
+    <div className="login-bg">
+      <div className="login-card">
+        <div className="login-logo-wrap">
+          <img src={LOGO_SRC} alt="Calidra"/>
+        </div>
+        <div className="login-system-name">Pi System Generador</div>
+        <div className="login-sub">OSIsoft PI Asset Framework · Tag Generator</div>
+        {err && <div className="alert alert-red" style={{marginBottom:16}}><Ico n="warn" s={13}/> {err}</div>}
+        <div className="form-group">
+          <label className="form-label">Correo electrónico</label>
+          <input className="form-input" type="email" placeholder="usuario@calidra.com" value={email} onChange={e=>{setEmail(e.target.value);setErr('');}} onKeyDown={e=>e.key==='Enter'&&doLogin()}/>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Contraseña</label>
+          <div style={{position:'relative'}}>
+            <input className="form-input" type={showPass?'text':'password'} placeholder="••••••••" value={pass} onChange={e=>{setPass(e.target.value);setErr('');}} onKeyDown={e=>e.key==='Enter'&&doLogin()} style={{paddingRight:40}}/>
+            <button style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',color:'var(--gray)',padding:4}} onClick={()=>setShowPass(v=>!v)}>
+              <Ico n={showPass?'eyeoff':'eye'} s={14}/>
+            </button>
+          </div>
+        </div>
+        <button className="btn-login" onClick={doLogin}>INICIAR SESIÓN</button>
+        <div className="quick-access" style={{marginTop:22}}>
+          <div className="quick-access-title">Acceso rápido — Demo</div>
+          <div>
+            {users.filter(u=>u.active).map(u=>(
+              <div key={u.id} className="q-chip" onClick={()=>{setEmail(u.email);setPass(u.password);setErr('');}}>
+                <div className="q-avatar" style={{background:u.color}}>{u.initials}</div>
+                {u.name.split(' ')[0]}
+                <span className="q-role">{u.role}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── TREE NODE ──────────────────────────────────────────────────────────────────
+const TreeNode = ({node, depth, assignments, onSelect, selectedId, expanded, onToggle}) => {
+  const isOpen = expanded.has(node.path);
+  const hasCh = node.children && node.children.length > 0;
+  const asgn = assignments[node.id] || {};
+  const hasTemplate = !!(asgn.template || node.template);
+  const hasProceso = !!(asgn.proceso || node.proceso);
+  const completo = hasTemplate && hasProceso;
+  return (
+    <div>
+      <div className={`tree-row ${selectedId===node.id?'selected':''}`} style={{paddingLeft:`${8+depth*16}px`}} onClick={()=>onSelect(node)}>
+        <span className="tree-toggle" onClick={e=>{e.stopPropagation();onToggle(node.path);}}>
+          {hasCh?(isOpen?'▼':'▶'):'·'}
+        </span>
+        <span style={{fontSize:12,flexShrink:0}}>{hasCh?'📁':'⚙️'}</span>
+        <span className="tree-name">{node.name}</span>
+        <div className="tree-meta">
+          <span className={`tree-proc ${hasProceso?'set':'unset'}`}>{(asgn.proceso||node.proceso)||'proceso?'}</span>
+          <span className={`tree-tmpl ${hasTemplate?'set':'unset'}`}>{(asgn.template||node.template)||'template?'}</span>
+          {!completo && <span style={{color:'var(--orange)',fontSize:11}}>⚠</span>}
+        </div>
+      </div>
+      {hasCh && isOpen && (
+        <div>
+          {node.children.map(c=>(
+            <TreeNode key={c.id} node={c} depth={depth+1} assignments={assignments} onSelect={onSelect} selectedId={selectedId} expanded={expanded} onToggle={onToggle}/>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── NODE DETAIL PANEL ──────────────────────────────────────────────────────────
+const NodeDetail = ({node, assignments, onAssign}) => {
+  const asgn = assignments[node.id] || {};
+  const template = asgn.template || node.template || '';
+  const proceso = asgn.proceso || node.proceso || suggestProceso(node);
+  const noProceso = asgn.noProceso || node.noProceso || '01';
+  const noActivo = asgn.noActivo || node.noActivo || getPrefix(node.name).num || '01';
+  const zona = asgn.zona || node.zona || 'ESTAD';
+
+  const set = (field, val) => onAssign(node.id, {...(assignments[node.id]||{}), [field]:val});
+  const sugs = useMemo(()=>suggest(node.name),[node.name]);
+  const tmplDef = getTemplateDef(template);
+  const isComplete = !!(template && proceso);
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:12,height:'100%',overflow:'auto'}}>
+      {/* Header */}
+      <div className="card" style={{flexShrink:0}}>
+        <div className="flex-between" style={{marginBottom:12}}>
+          <div className="card-title" style={{marginBottom:0}}>
+            <span className="card-dot"/>
+            <span className="mono" style={{color:'var(--red)'}}>{node.name}</span>
+          </div>
+          {isComplete
+            ? <span className="badge badge-green">✓ Completo</span>
+            : <span className="badge badge-orange">⚠ Incompleto</span>}
+        </div>
+
+        {/* Area / Proceso */}
+        <div style={{background:'var(--blue-dim)',border:'1px solid rgba(37,99,235,.2)',borderRadius:10,padding:14,marginBottom:12}}>
+          <div style={{fontSize:10,fontWeight:800,color:'var(--blue)',textTransform:'uppercase',letterSpacing:.8,marginBottom:10}}>
+            📍 ÁREA Y SUBÁREA
+          </div>
+          <div className="g2" style={{gap:10}}>
+            <div>
+              <label className="form-label">Proceso *</label>
+              <select style={{width:'100%'}} value={proceso} onChange={e=>set('proceso',e.target.value)}>
+                <option value="">— Seleccionar —</option>
+                {CAT_PROCESOS.map(p=><option key={p.id} value={p.id}>{p.id} — {p.desc}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="form-label">No. Proceso</label>
+              <input type="number" style={{width:'100%'}} min="1" max="99" value={noProceso} onChange={e=>set('noProceso',e.target.value.padStart(2,'0'))}/>
+            </div>
+            <div>
+              <label className="form-label">No. Activo</label>
+              <input type="number" style={{width:'100%'}} min="1" max="99" value={noActivo} onChange={e=>set('noActivo',e.target.value.padStart(2,'0'))}/>
+            </div>
+            <div>
+              <label className="form-label">Zona / Descriptor *</label>
+              <select style={{width:'100%'}} value={zona} onChange={e=>set('zona',e.target.value)}>
+                {CAT_ZONAS.map(z=><option key={z.id} value={z.id}>{z.id} — {z.desc}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Template */}
+        <div>
+          <label className="form-label">Template PI AF *</label>
+          <select style={{width:'100%',padding:'10px 14px'}} value={template} onChange={e=>set('template',e.target.value)}>
+            <option value="">— Seleccionar template —</option>
+            {['Activos','Calcinacion','Trituracion','Hidratacion','Energia','Base','Sistema'].map(cat=>(
+              <optgroup key={cat} label={cat}>
+                {TEMPLATES.filter(t=>t.c===cat).map(t=><option key={t.n} value={t.n}>{t.n}</option>)}
+              </optgroup>
+            ))}
+          </select>
+        </div>
+
+        {template && proceso && (
+          <div className="alert alert-green" style={{marginTop:10}}>
+            <Ico n="check" s={13}/>
+            <span>PI Tag: <strong className="mono" style={{fontSize:10}}>{node.name.split('-')[0]||'XXX'}-{proceso}-{noProceso}-{node.name}-{noActivo}</strong></span>
+          </div>
+        )}
+        {!proceso && (
+          <div className="warn-banner" style={{marginTop:10}}>
+            <Ico n="warn" s={13}/> Debe asignarse el Proceso para generar tags
+          </div>
+        )}
+      </div>
+
+      {/* Attributes preview */}
+      {tmplDef && (
+        <div className="card" style={{flexShrink:0}}>
+          <div className="card-title"><span className="card-dot"/>ATTRIBUTES ({tmplDef.attrs.length})</div>
+          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            {tmplDef.attrs.map((a,i)=>(
+              <div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 10px',background:'var(--gray6)',borderRadius:8,border:'1px solid var(--gray4)'}}>
+                <span className="tag tag-red" style={{fontSize:9,flexShrink:0}}>{a.ind}</span>
+                <span style={{flex:1,fontSize:11,fontWeight:600}}>{a.desc}</span>
+                {a.uom && <span className="tag tag-gray" style={{fontSize:9}}>{a.uom}</span>}
+                <span className="tag tag-blue" style={{fontSize:9}}>{a.var}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Suggestions */}
+      {!template && (
+        <div className="card" style={{flexShrink:0}}>
+          <div className="card-title"><span className="card-dot"/>SUGERENCIAS <span className="tag tag-red">{getPrefix(node.name).pfx||'—'}</span></div>
+          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            {sugs.slice(0,6).map(t=>(
+              <div key={t.n} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'9px 12px',background:'var(--gray6)',borderRadius:9,border:'1.5px solid var(--gray4)',cursor:'pointer',transition:'border-color .15s'}}
+                onClick={()=>set('template',t.n)}>
+                <div>
+                  <div style={{fontSize:12,fontWeight:700}}>{t.n}</div>
+                  <div style={{fontSize:10,color:'var(--gray2)',marginTop:2}}>{t.attrs.length} attributes · {t.c}</div>
+                </div>
+                <button className="btn btn-sm btn-outline">Asignar</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── TAB RESUMEN ────────────────────────────────────────────────────────────────
+const TabResumen = ({state, user}) => {
+  const {elements, assignments, piTags, opcTags, projectName, plantaCode} = state;
+  const total = elements.length;
+  const withTemplate = elements.filter(e=>(assignments[e.id]?.template||e.template)).length;
+  const withProceso = elements.filter(e=>(assignments[e.id]?.proceso||e.proceso)).length;
+  const fullyComplete = elements.filter(e=>{
+    const a = assignments[e.id]||{};
+    return (a.template||e.template) && (a.proceso||e.proceso);
+  }).length;
+  const pct = total > 0 ? Math.round(fullyComplete/total*100) : 0;
+  const steps = [
+    {l:'Cargar Datos', done:total>0, active:total===0},
+    {l:'Proceso + Zona', done:withProceso===total&&total>0, active:total>0&&withProceso<total},
+    {l:'Templates', done:withTemplate===total&&total>0, active:withProceso===total&&withTemplate<total},
+    {l:'Generar Tags', done:piTags.length>0, active:fullyComplete===total&&total>0&&piTags.length===0},
+    {l:'Exportar', done:false, active:piTags.length>0},
+  ];
+  return (
+    <div>
+      <div className="sec-header">
+        <div>
+          <h2>Panel de Control — Pi System Generador</h2>
+          <p>Bienvenido, {user.name} · {new Date().toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
+        </div>
+        <img src={LOGO_SRC} alt="Calidra" style={{height:40,objectFit:'contain',opacity:.9}}/>
+      </div>
+
+      <div className="card mb-16">
+        <div className="card-title"><span className="card-dot"/>PROGRESO DEL PROYECTO</div>
+        <div className="steps">
+          {steps.map((s,i)=>(
+            <div key={i} className={`step ${s.done?'done':''}`}>
+              <div className={`step-circle ${s.done?'done':s.active?'active':''}`}>{s.done?'✓':i+1}</div>
+              <div className="step-label">{s.l}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="g5 mb-16">
+        {[
+          {l:'Total Elements',v:total,c:total>0?'sv-red':'',sub:plantaCode||'Sin datos'},
+          {l:'Con Proceso/Zona',v:withProceso,c:withProceso>0?'sv-blue':'',sub:`${total>0?Math.round(withProceso/total*100):0}%`},
+          {l:'Con Template',v:withTemplate,c:withTemplate>0?'sv-orange':'',sub:`${total>0?Math.round(withTemplate/total*100):0}%`},
+          {l:'Completados',v:fullyComplete,c:fullyComplete>0?'sv-green':'',sub:`${pct}%`,prog:pct},
+          {l:'Tags PI',v:piTags.length,c:piTags.length>0?'sv-blue':'',sub:'generados'},
+        ].map((s,i)=>(
+          <div key={i} className="stat">
+            <div className="stat-label">{s.l}</div>
+            <div className={`stat-val ${s.c}`}>{s.v}</div>
+            {s.prog !== undefined && <div className="progress"><div className="progress-fill pf-red" style={{width:`${s.prog}%`}}/></div>}
+            <div className="stat-sub">{s.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="g2">
+        <div className="card">
+          <div className="card-title"><span className="card-dot"/>FLUJO DE TRABAJO</div>
+          {[
+            {t:'Cargar Excel PI AF o DFP',d:total>0?`${total} elements cargados`:'Ir a "Cargar Datos"',s:total>0?'done':'pending'},
+            {t:'Asignar Proceso, No.Activo y Zona',d:`${total-withProceso} elements sin proceso/zona`,s:withProceso===total&&total>0?'done':total>0?'active':'pending'},
+            {t:'Asignar Templates PI AF',d:`${total-withTemplate} elements sin template`,s:withTemplate===total&&total>0?'done':withProceso>0?'active':'pending'},
+            {t:'Generar Tags PI y OPC',d:piTags.length>0?`${piTags.length} tags PI · ${opcTags.length} OPC`:'Completar árbol primero',s:piTags.length>0?'done':fullyComplete===total&&total>0?'active':'pending'},
+            {t:'Exportar Outputs',d:'Árbol PI AF · Listado PI · Programador',s:opcTags.length>0?'active':'pending'},
+          ].map((item,i)=>(
+            <div key={i} className="tl-item">
+              <div className={`tl-dot ${item.s}`}>{item.s==='done'?'✓':item.s==='active'?'→':'○'}</div>
+              <div><div className="tl-title">{item.t}</div><div className="tl-desc">{item.d}</div></div>
+            </div>
+          ))}
+        </div>
+        <div className="card">
+          <div className="card-title"><span className="card-dot"/>ESTADO DEL PROYECTO</div>
+          {projectName ? (
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
+              {[
+                {l:'Proyecto',v:projectName,b:'badge-red'},
+                {l:'Planta',v:plantaCode||'—',b:'badge-red'},
+                {l:'Sin Proceso/Zona',v:`${total-withProceso}`,b:total-withProceso>0?'badge-orange':'badge-green'},
+                {l:'Sin Template',v:`${total-withTemplate}`,b:total-withTemplate>0?'badge-orange':'badge-green'},
+                {l:'Completitud',v:`${pct}%`,b:pct===100?'badge-green':pct>50?'badge-orange':'badge-red'},
+              ].map((r,i)=>(
+                <div key={i} className="field-row">
+                  <span className="field-label">{r.l}</span>
+                  <span className={`badge ${r.b}`}>{r.v}</span>
+                </div>
+              ))}
+              <div style={{padding:'14px',background:'var(--red-dim2)',borderRadius:10,border:'1px solid var(--red-border)',marginTop:4}}>
+                <div style={{fontSize:10,fontWeight:800,color:'var(--red)',marginBottom:6,textTransform:'uppercase',letterSpacing:.5}}>Progreso General</div>
+                <div className="progress" style={{height:8}}><div className="progress-fill pf-red" style={{width:`${pct}%`}}/></div>
+                <div style={{fontSize:13,fontWeight:800,color:'var(--red)',marginTop:6,textAlign:'right',fontFamily:'var(--mono)'}}>{pct}%</div>
+              </div>
+            </div>
+          ) : (
+            <div className="empty" style={{padding:24}}><div className="empty-icon">📋</div><p>Carga datos para comenzar</p></div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── TAB CARGAR ────────────────────────────────────────────────────────────────
+const TabCargar = ({state, setState}) => {
+  const [mode, setMode] = useState('excel');
+  const [equips, setEquips] = useState([]);
+  const [sel, setSel] = useState({});
+  const [search, setSearch] = useState('');
+  const [projName, setProjName] = useState('');
+  const [plantaId, setPlantaId] = useState('');
+  const fileRef = useRef();
+
+  const onExcel = e => {
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = ev => {
+      const wb = XLSX.read(ev.target.result, {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws, {header:1});
+      const els = parseExcel(data);
+      const pc = plantaId || els[0]?.parent?.split('\\')[2] || '';
+      setState(s=>({...s, elements:els, plantaCode:pc, projectName:projName||f.name.replace('.xlsx','')}));
+    };
+    r.readAsArrayBuffer(f);
+  };
+
+  const onDFP = e => {
+    if (!e.target.files[0]) return;
+    const mock = [
+      {id:1,tag:'TAM-01',name:'Tolva de Alimentación',area:'TRI'},{id:2,tag:'AGR-01',name:'Alimentador Grizzly',area:'TRI'},
+      {id:3,tag:'QQU-01',name:'Quebradora de Quijada',area:'TRI'},{id:4,tag:'TBA-01',name:'Transportador 1',area:'TRI'},
+      {id:5,tag:'TBA-02',name:'Transportador 2',area:'TRI'},{id:6,tag:'TBA-03',name:'Transportador 3',area:'TRI'},
+      {id:7,tag:'CPO-01',name:'Colector de Polvos 1',area:'TRI'},{id:8,tag:'CPO-02',name:'Colector de Polvos 2',area:'TRI'},
+      {id:9,tag:'CIE-01',name:'Criba 1',area:'TRI'},{id:10,tag:'SIL-01',name:'Silo 1',area:'MCV'},
+    ];
+    setEquips(mock);
+    const s = {}; mock.forEach(e=>s[e.id]=true); setSel(s);
+  };
+
+  const filtered = equips.filter(e=>!search||(e.tag+e.name).toLowerCase().includes(search.toLowerCase()));
+
+  const loadDFP = () => {
+    const chosen = equips.filter(e=>sel[e.id]);
+    const els = chosen.map((e,i) => {
+      const {pfx, num} = getPrefix(e.tag);
+      return {id:i+1,parent:'',name:e.tag,path:e.tag,template:'',proceso:suggestProceso({name:e.tag}),noProceso:'01',noActivo:num,zona:'ESTAD'};
+    });
+    setState(s=>({...s, elements:els, projectName:projName||'DFP Import', plantaCode:plantaId}));
+  };
+
+  return (
+    <div>
+      <div className="sec-header"><div><h2>Cargar Datos</h2><p>Selecciona la fuente de datos para generar el árbol</p></div></div>
+      <div className="card mb-16">
+        <div className="card-title"><span className="card-dot"/>CONFIGURACIÓN DEL PROYECTO</div>
+        <div className="g2" style={{gap:12}}>
+          <div>
+            <label className="form-label">Nombre del Proyecto</label>
+            <input type="text" style={{width:'100%'}} placeholder="Ej: TRI_Condorcocha_2025" value={projName} onChange={e=>setProjName(e.target.value)}/>
+          </div>
+          <div>
+            <label className="form-label">Planta</label>
+            <select style={{width:'100%'}} value={plantaId} onChange={e=>setPlantaId(e.target.value)}>
+              <option value="">— Seleccionar planta —</option>
+              {CAT_PLANTAS.map(p=><option key={p.id} value={p.id}>{p.id} — {p.desc} ({p.pais})</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="card mb-16">
+        <div className="card-title"><span className="card-dot"/>FUENTE DE DATOS</div>
+        <div className="g2 mb-20">
+          <div className={`mode-card ${mode==='excel'?'active':''}`} onClick={()=>setMode('excel')}>
+            <div className="mc-icon">📊</div><h3>Opción B — Excel PI AF</h3>
+            <p>Carga export de PI Asset Framework. Elements existentes.</p>
+          </div>
+          <div className={`mode-card ${mode==='dfp'?'active':''}`} onClick={()=>setMode('dfp')}>
+            <div className="mc-icon">📄</div><h3>Opción A — DFP (PDF)</h3>
+            <p>Detecta tags automáticamente para selección manual.</p>
+          </div>
+        </div>
+
+        {mode === 'excel' && (
+          <div>
+            <div className="alert alert-blue mb-16"><Ico n="info" s={13}/> Solo se procesan filas con <strong>ObjectType = Element</strong>.</div>
+            <div className="upload-zone" onClick={()=>fileRef.current.click()}>
+              <div className="uz-icon">📊</div><h3>Arrastra tu Excel aquí</h3><p>o haz clic · .xlsx</p>
+              <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{display:'none'}} onChange={onExcel}/>
+            </div>
+            {state.elements.length > 0 && <div className="alert alert-green mt-12"><Ico n="check" s={13}/> <strong>{state.elements.length} elements</strong> cargados.</div>}
+          </div>
+        )}
+
+        {mode === 'dfp' && (
+          <div>
+            <div className="upload-zone" onClick={()=>fileRef.current.click()}>
+              <div className="uz-icon">📄</div><h3>Arrastra el DFP aquí</h3><p>o haz clic · .pdf</p>
+              <input ref={fileRef} type="file" accept=".pdf" style={{display:'none'}} onChange={onDFP}/>
+            </div>
+            {equips.length > 0 && (
+              <div className="mt-16">
+                <div className="flex-between mb-16">
+                  <div className="card-title" style={{marginBottom:0}}><span className="card-dot"/>EQUIPOS DETECTADOS ({equips.length})</div>
+                  <div style={{display:'flex',gap:8}}>
+                    <button className="btn btn-sm btn-outline" onClick={()=>{const s={};filtered.forEach(e=>s[e.id]=true);setSel(s);}}>Todos</button>
+                    <button className="btn btn-sm btn-outline" onClick={()=>{const s={...sel};filtered.forEach(e=>delete s[e.id]);setSel(s);}}>Ninguno</button>
+                  </div>
+                </div>
+                <input type="search" style={{width:280,marginBottom:12}} placeholder="Buscar..." value={search} onChange={e=>setSearch(e.target.value)}/>
+                <div style={{display:'flex',flexDirection:'column',gap:8,maxHeight:280,overflowY:'auto'}}>
+                  {filtered.map(eq=>(
+                    <label key={eq.id} className={`check-row ${sel[eq.id]?'checked':''}`}>
+                      <input type="checkbox" checked={!!sel[eq.id]} onChange={e=>setSel(s=>({...s,[eq.id]:e.target.checked}))}/>
+                      <span className="tag tag-red">{eq.tag}</span>
+                      <span style={{flex:1,fontSize:13,fontWeight:500}}>{eq.name}</span>
+                      <span className="badge badge-blue">{eq.area}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="mt-16">
+                  <button className="btn btn-red" onClick={loadDFP}>
+                    <Ico n="tree"/> Generar Árbol ({Object.values(sel).filter(Boolean).length} equipos)
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── TAB ÁRBOL ──────────────────────────────────────────────────────────────────
+const TabArbol = ({state, setState}) => {
+  const {elements, assignments} = state;
+  const [sel, setSel] = useState(null);
+  const [expanded, setExpanded] = useState(new Set());
+  const [search, setSearch] = useState('');
+  const roots = useMemo(()=>buildTree(elements),[elements]);
+  const toggle = useCallback(p=>setExpanded(prev=>{const n=new Set(prev);n.has(p)?n.delete(p):n.add(p);return n;}),[]);
+  const onAssign = (id, val) => setState(s=>({...s, assignments:{...s.assignments,[id]:val}}));
+
+  const withTemplate = elements.filter(e=>(assignments[e.id]?.template||e.template)).length;
+  const withProceso = elements.filter(e=>(assignments[e.id]?.proceso||e.proceso)).length;
+  const complete = elements.filter(e=>{
+    const a=assignments[e.id]||{};
+    return (a.template||e.template)&&(a.proceso||e.proceso);
+  }).length;
+  const pct = elements.length > 0 ? Math.round(complete/elements.length*100) : 0;
+
+  return (
+    <div className="panel">
+      <div className="panel-l">
+        <div className="card" style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+          <div className="flex-between mb-12">
+            <div className="card-title" style={{marginBottom:0}}><span className="card-dot"/>ÁRBOL PI AF</div>
+            <div style={{display:'flex',gap:4}}>
+              <button className="btn btn-ghost btn-sm" title="Expandir" onClick={()=>setExpanded(new Set(elements.map(e=>e.path)))}>＋</button>
+              <button className="btn btn-ghost btn-sm" title="Colapsar" onClick={()=>setExpanded(new Set())}>－</button>
+            </div>
+          </div>
+          <input type="search" style={{marginBottom:10}} placeholder="Buscar equipo..." value={search} onChange={e=>setSearch(e.target.value)}/>
+
+          {/* Legend */}
+          <div style={{display:'flex',gap:8,marginBottom:10,flexWrap:'wrap'}}>
+            <span className="tag tag-blue" style={{fontSize:9}}>PROCESO</span>
+            <span className="tag tag-green" style={{fontSize:9}}>TEMPLATE ✓</span>
+            <span className="tag tag-orange" style={{fontSize:9}}>PENDIENTE</span>
+          </div>
+
+          <div style={{flex:1,overflowY:'auto'}}>
+            {roots.length === 0
+              ? <div className="empty"><div className="empty-icon">🌲</div><h3>Sin datos</h3><p>Carga datos primero</p></div>
+              : <div className="tree">{roots.map(n=><TreeNode key={n.id} node={n} depth={0} assignments={assignments} onSelect={setSel} selectedId={sel?.id} expanded={expanded} onToggle={toggle}/>)}</div>
+            }
+          </div>
+
+          {elements.length > 0 && (
+            <div style={{marginTop:12,paddingTop:12,borderTop:'1px solid var(--gray4)'}}>
+              <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
+                <span style={{fontSize:10,fontWeight:700,color:'var(--gray)',textTransform:'uppercase',letterSpacing:.5}}>Completados</span>
+                <span style={{fontSize:11,fontWeight:800,color:'var(--red)',fontFamily:'var(--mono)'}}>{complete}/{elements.length}</span>
+              </div>
+              <div className="progress"><div className="progress-fill pf-red" style={{width:`${pct}%`}}/></div>
+              <div style={{display:'flex',justifyContent:'space-between',marginTop:6,fontSize:10,color:'var(--gray2)'}}>
+                <span>Proceso: {withProceso}</span>
+                <span>Template: {withTemplate}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="panel-r scroll">
+        {sel
+          ? <NodeDetail node={sel} assignments={assignments} onAssign={onAssign}/>
+          : (
+            <div className="card" style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <div className="empty">
+                <div className="empty-icon">👈</div>
+                <h3>Selecciona un equipo</h3>
+                <p>Haz clic en cualquier nodo del árbol<br/>para asignar Proceso, Zona y Template</p>
+              </div>
+            </div>
+          )
+        }
+      </div>
+    </div>
+  );
+};
+
+// ── TAB LISTADO PI ─────────────────────────────────────────────────────────────
+const TabListadoPI = ({state, setState}) => {
+  const {elements, assignments, piTags, plantaCode} = state;
+  const [search, setSearch] = useState('');
+
+  const generate = () => {
+    const tags = [];
+    elements.forEach(el => {
+      const asgn = assignments[el.id] || {};
+      const template = asgn.template || el.template; if (!template) return;
+      const proceso = asgn.proceso || el.proceso; if (!proceso) return;
+      const noProceso = asgn.noProceso || el.noProceso || '01';
+      const noActivo = asgn.noActivo || el.noActivo || getPrefix(el.name).num || '01';
+      const zonaBase = asgn.zona || el.zona || 'ESTAD';
+      const {pfx} = getPrefix(el.name);
+      const activo = pfx || el.name.substring(0,3);
+      const tmplDef = getTemplateDef(template);
+      const attrs = tmplDef ? tmplDef.attrs : [{ind:'EEQU',ni:'01',zona:'ESTAD',var:'DIG',uom:'',desc:'Estado de Equipo'}];
+
+      attrs.forEach(a => {
+        const zona = a.zona || zonaBase;
+        const piTag = makePITag(plantaCode||'XXX', proceso, noProceso, activo, noActivo, a.ind, a.ni, zona, a.var);
+        const desc = buildDesc(plantaCode||'XXX', proceso, noProceso, activo, noActivo, zona, a.ind, a.ni, a.var, a.uom);
+        tags.push({
+          planta: plantaCode||'XXX', proceso, noProceso, activo, noActivo,
+          indicador: a.ind, noIndicador: a.ni, zona, variable: a.var, uom: a.uom,
+          description: desc, attrDesc: a.desc, template, elementName: el.name, piTag
+        });
+      });
+    });
+    setState(s=>({...s, piTags:tags, opcTags:[]}));
+  };
+
+  const filtered = piTags.filter(t=>!search||(t.piTag+t.description+t.elementName).toLowerCase().includes(search.toLowerCase()));
+
+  const expF = () => {
+    const rows = [['PI_Tag','Descripcion','Planta','Proceso','NoProceso','Activo','NoActivo','Indicador','NoIndicador','Zona','Variable','UOM','Template','Element']];
+    piTags.forEach(t=>rows.push([t.piTag,t.description,t.planta,t.proceso,t.noProceso,t.activo,t.noActivo,t.indicador,t.noIndicador,t.zona,t.variable,t.uom,t.template,t.elementName]));
+    const ws = XLSX.utils.aoa_to_sheet(rows); const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Listado_PI');
+    XLSX.writeFile(wb, `${state.projectName||'proyecto'}_listado_pi.xlsx`);
+  };
+
+  return (
+    <div>
+      <div className="sec-header"><div><h2>Listado PI</h2><p>Tags y descripciones para el historiador OSIsoft PI</p></div></div>
+      <div className="card mb-16">
+        <div className="flex-between">
+          <div>
+            <div className="card-title" style={{marginBottom:4}}><span className="card-dot"/>TAGS PI — Historiador OSIsoft</div>
+            <div className="text-sm text-muted">Incluye tag completo + descripción generada automáticamente</div>
+          </div>
+          <div style={{display:'flex',gap:10}}>
+            <button className="btn btn-red" onClick={generate}><Ico n="gear" s={13}/> Generar Tags</button>
+            {piTags.length > 0 && <button className="btn btn-green" onClick={expF}><Ico n="export" s={13}/> Exportar XLSX</button>}
+          </div>
+        </div>
+      </div>
+
+      {piTags.length === 0 ? (
+        <div className="empty"><div className="empty-icon">📡</div><h3>Sin tags generados</h3><p>Asigna Proceso + Template en el Árbol y presiona "Generar Tags"</p></div>
+      ) : (
+        <>
+          <div style={{marginBottom:12,display:'flex',gap:12,alignItems:'center'}}>
+            <input type="search" style={{width:360}} placeholder="Buscar tag, descripción o equipo..." value={search} onChange={e=>setSearch(e.target.value)}/>
+            <span className="badge badge-red">{filtered.length} tags</span>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead><tr>
+                <th>#</th><th>PI Tag</th><th>Descripción</th><th>Planta</th><th>Proceso</th><th>Activo</th><th>Indicador</th><th>Zona</th><th>Variable</th><th>UOM</th>
+              </tr></thead>
+              <tbody>
+                {filtered.slice(0,300).map((t,i)=>(
+                  <tr key={i}>
+                    <td className="mono text-xs" style={{color:'var(--gray2)'}}>{i+1}</td>
+                    <td><span className="tag tag-red">{t.piTag}</span></td>
+                    <td style={{fontSize:11,fontWeight:500,maxWidth:260,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={t.description}>{t.description}</td>
+                    <td><span className="badge badge-red">{t.planta}</span></td>
+                    <td><span className="tag tag-blue">{t.proceso}</span></td>
+                    <td className="mono text-xs">{t.activo}-{t.noActivo}</td>
+                    <td><span className="tag tag-green">{t.indicador}</span></td>
+                    <td><span className="tag tag-purple" style={{fontSize:9}}>{t.zona}</span></td>
+                    <td className="mono text-xs" style={{color:'var(--gray2)'}}>{t.variable}</td>
+                    <td>{t.uom && <span className="tag tag-gray">{t.uom}</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {filtered.length > 300 && <div style={{textAlign:'center',fontSize:11,color:'var(--gray2)',marginTop:8}}>Mostrando 300 de {filtered.length} — exporta para ver todos</div>}
+        </>
+      )}
+    </div>
+  );
+};
+
+// ── TAB PROGRAMADOR ───────────────────────────────────────────────────────────
+const TabProgramador = ({state, setState}) => {
+  const {piTags, opcTags} = state;
+  const [search, setSearch] = useState('');
+
+  const generate = () => {
+    const tags = piTags.map(t => ({
+      ...t,
+      opcTag: makeOPCTag(t.activo, t.noActivo, t.indicador, t.noIndicador, t.zona, t.variable),
+      plcDB: `DB_${t.activo}${String(t.noActivo).padStart(2,'0')}`,
+      plcDesc: `${t.planta}-${t.proceso}-${String(t.noProceso).padStart(2,'0')} ${t.activo}-${String(t.noActivo).padStart(2,'0')} ${t.indicador}-${String(t.noIndicador).padStart(2,'0')} ${t.zona} ${t.variable}${t.uom?' ['+t.uom+']':''}`,
+    }));
+    setState(s=>({...s, opcTags:tags}));
+  };
+
+  const filtered = opcTags.filter(t=>!search||(t.opcTag+t.plcDesc+t.elementName).toLowerCase().includes(search.toLowerCase()));
+
+  const expF = () => {
+    const rows = [['OPC_Tag','PI_Tag','Descripcion_PLC','PLC_DB','Planta','Proceso','Activo','Indicador','Zona','Variable','UOM','Descripcion_Completa']];
+    opcTags.forEach(t=>rows.push([t.opcTag,t.piTag,t.plcDesc,t.plcDB,t.planta,t.proceso,`${t.activo}-${t.noActivo}`,t.indicador,t.zona,t.variable,t.uom,t.description]));
+    const ws = XLSX.utils.aoa_to_sheet(rows); const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Listado_Programador');
+    XLSX.writeFile(wb, `${state.projectName||'proyecto'}_listado_programador.xlsx`);
+  };
+
+  return (
+    <div>
+      <div className="sec-header"><div><h2>Listado Programador</h2><p>Tags OPC con descripción para configuración PLC / SCADA</p></div></div>
+      <div className="card mb-16">
+        <div className="flex-between">
+          <div>
+            <div className="card-title" style={{marginBottom:4}}><span className="card-dot"/>TAGS OPC — Programador PLC</div>
+            <div className="text-sm text-muted">Incluye OPC Tag, PI Tag, descripción PLC y base de datos</div>
+          </div>
+          <div style={{display:'flex',gap:10}}>
+            <button className="btn btn-red" onClick={generate} disabled={piTags.length===0}><Ico n="cpu" s={13}/> Generar Tags OPC</button>
+            {opcTags.length > 0 && <button className="btn btn-blue" onClick={expF}><Ico n="export" s={13}/> Exportar XLSX</button>}
+          </div>
+        </div>
+      </div>
+      {piTags.length === 0 && <div className="alert alert-orange mb-16"><Ico n="warn" s={13}/> Genera el Listado PI primero.</div>}
+      {opcTags.length === 0 ? (
+        <div className="empty"><div className="empty-icon">🔧</div><h3>Sin tags OPC</h3><p>Genera el Listado PI y luego presiona "Generar Tags OPC"</p></div>
+      ) : (
+        <>
+          <div style={{marginBottom:12,display:'flex',gap:12,alignItems:'center'}}>
+            <input type="search" style={{width:360}} placeholder="Buscar tag, descripción..." value={search} onChange={e=>setSearch(e.target.value)}/>
+            <span className="badge badge-blue">{filtered.length} tags</span>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead><tr>
+                <th>#</th><th>OPC Tag</th><th>Descripción PLC</th><th>PLC DB</th><th>PI Tag</th><th>Activo</th><th>Indicador</th><th>Zona</th><th>Variable</th><th>UOM</th>
+              </tr></thead>
+              <tbody>
+                {filtered.slice(0,300).map((t,i)=>(
+                  <tr key={i}>
+                    <td className="mono text-xs" style={{color:'var(--gray2)'}}>{i+1}</td>
+                    <td><span className="tag tag-blue">{t.opcTag}</span></td>
+                    <td style={{fontSize:11,fontWeight:500,maxWidth:240,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={t.plcDesc}>{t.plcDesc}</td>
+                    <td><span className="tag tag-gray">{t.plcDB}</span></td>
+                    <td><span className="tag tag-red" style={{fontSize:9}}>{t.piTag}</span></td>
+                    <td className="mono text-xs">{t.activo}-{t.noActivo}</td>
+                    <td><span className="tag tag-green">{t.indicador}</span></td>
+                    <td><span className="tag tag-purple" style={{fontSize:9}}>{t.zona}</span></td>
+                    <td className="mono text-xs" style={{color:'var(--gray2)'}}>{t.variable}</td>
+                    <td>{t.uom && <span className="tag tag-gray">{t.uom}</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+// ── TAB EXPORTAR ───────────────────────────────────────────────────────────────
+const TabExportar = ({state}) => {
+  const {elements, assignments, piTags, opcTags, projectName} = state;
+  const expArbol = () => {
+    const rows = [['Selected(x)','Parent','Name','ObjectType','Template','Proceso','NoProceso','NoActivo','Zona']];
+    elements.forEach(e => {
+      const a = assignments[e.id]||{};
+      rows.push(['x',e.parent,e.name,'Element',a.template||e.template||'',a.proceso||e.proceso||'',a.noProceso||e.noProceso||'01',a.noActivo||e.noActivo||'01',a.zona||e.zona||'ESTAD']);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(rows); const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Arbol_PI_AF'); XLSX.writeFile(wb, `${projectName||'proyecto'}_arbol_pi_af.xlsx`);
+  };
+  const expPI = () => {
+    const rows = [['PI_Tag','Descripcion','Planta','Proceso','Activo','Indicador','Zona','Variable','UOM','Template']];
+    piTags.forEach(t=>rows.push([t.piTag,t.description,t.planta,t.proceso,`${t.activo}-${t.noActivo}`,t.indicador,t.zona,t.variable,t.uom,t.template]));
+    const ws = XLSX.utils.aoa_to_sheet(rows); const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Listado_PI'); XLSX.writeFile(wb, `${projectName||'proyecto'}_listado_pi.xlsx`);
+  };
+  const expOPC = () => {
+    const rows = [['OPC_Tag','PI_Tag','Descripcion_PLC','PLC_DB','Activo','Indicador','Zona','Variable','UOM','Descripcion_Completa']];
+    opcTags.forEach(t=>rows.push([t.opcTag,t.piTag,t.plcDesc,t.plcDB,`${t.activo}-${t.noActivo}`,t.indicador,t.zona,t.variable,t.uom,t.description]));
+    const ws = XLSX.utils.aoa_to_sheet(rows); const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Listado_Programador'); XLSX.writeFile(wb, `${projectName||'proyecto'}_listado_programador.xlsx`);
+  };
+  const cards = [
+    {icon:'🌲',title:'Árbol PI AF',desc:'Excel con Elements, Templates, Proceso y Zona',count:elements.length,unit:'elements',color:'red',action:expArbol,ok:elements.length>0},
+    {icon:'📡',title:'Listado PI',desc:'Tags PI con Descripción para OSIsoft',count:piTags.length,unit:'tags PI',color:'green',action:expPI,ok:piTags.length>0},
+    {icon:'🔧',title:'Listado Programador',desc:'Tags OPC con Descripción PLC y DB',count:opcTags.length,unit:'tags OPC',color:'blue',action:expOPC,ok:opcTags.length>0},
+  ];
+  return (
+    <div>
+      <div className="sec-header"><div><h2>Exportar Outputs</h2><p>Descarga archivos .xlsx con tags y descripciones completas</p></div></div>
+      <div className="alert alert-blue mb-20"><Ico n="info" s={13}/> Los exports incluyen: Tag PI · Tag OPC · Descripción auto-generada · UOM · Proceso · Zona</div>
+      <div className="g3">
+        {cards.map((c,i)=>(
+          <div key={i} className="export-card" style={{opacity:c.ok?1:.55}}>
+            <div className="ec-icon">{c.icon}</div>
+            <h3 style={{fontWeight:800,marginBottom:6}}>{c.title}</h3>
+            <p style={{fontSize:11,color:'var(--gray2)',marginBottom:16}}>{c.desc}</p>
+            <div className={`ec-count sv-${c.color}`}>{c.count}</div>
+            <div style={{fontSize:11,color:'var(--gray2)',marginBottom:16}}>{c.unit}</div>
+            <hr className="divider"/>
+            <button className={`btn btn-${c.color} w-full`} onClick={c.action} disabled={!c.ok}><Ico n="export" s={13}/> Exportar {c.title}</button>
+            {!c.ok && <div style={{textAlign:'center',fontSize:11,color:'var(--gray2)',marginTop:8}}>Genera los datos primero</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ── APP ────────────────────────────────────────────────────────────────────────
+const App = () => {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [tab, setTab] = useState('resumen');
+  const [users] = useState(USERS_INIT);
+  const [state, setState] = useState({projectName:'',plantaCode:'',elements:[],assignments:{},piTags:[],opcTags:[]});
+
+  if (!currentUser) return <Login onLogin={setCurrentUser} users={users}/>;
+
+  const tabs = [
+    {id:'resumen',   label:'Resumen',     ico:'dashboard'},
+    {id:'cargar',    label:'Cargar Datos',ico:'upload'},
+    {id:'arbol',     label:'Árbol',       ico:'tree',  badge:state.elements.length||null, bc:'tb-red'},
+    {id:'pi',        label:'Listado PI',  ico:'pi',    badge:state.piTags.length||null,   bc:'tb-blue'},
+    {id:'programador',label:'Programador',ico:'cpu',   badge:state.opcTags.length||null,  bc:'tb-blue'},
+    {id:'exportar',  label:'Exportar',    ico:'export'},
+  ];
+
+  return (
+    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column'}}>
+      <div className="header">
+        <div style={{display:'flex',alignItems:'center'}}>
+          <div><img src={LOGO_SRC} alt="Calidra" style={{height:42,objectFit:'contain'}}/></div>
+          <div className="header-sep"/>
+          <div>
+            <div className="header-system-name">Pi System Generador</div>
+            <div className="header-system-sub">OSIsoft PI Asset Framework · Tag Generator</div>
+          </div>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:14}}>
+          {state.projectName && <span className="badge badge-red" style={{fontSize:11}}>{state.projectName}</span>}
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <div className="h-avatar" style={{background:currentUser.color}}>{currentUser.initials}</div>
+            <div>
+              <div className="h-name">{currentUser.name}</div>
+              <div className="h-role">{currentUser.role}</div>
+            </div>
+          </div>
+          <button className="btn-logout" onClick={()=>{setCurrentUser(null);setTab('resumen');}}>Cerrar sesión</button>
+        </div>
+      </div>
+      <div className="red-stripe"/>
+      <div className="tabs-bar">
+        {tabs.map(t=>(
+          <div key={t.id} className={`tab ${tab===t.id?'active':''}`} onClick={()=>setTab(t.id)}>
+            <Ico n={t.ico} s={13}/>{t.label}
+            {t.badge > 0 && <span className={`tab-badge ${t.bc}`}>{t.badge}</span>}
+          </div>
+        ))}
+      </div>
+      <div className="content" style={{flex:1}}>
+        {tab==='resumen'    && <TabResumen     state={state} user={currentUser}/>}
+        {tab==='cargar'     && <TabCargar      state={state} setState={setState}/>}
+        {tab==='arbol'      && <TabArbol       state={state} setState={setState}/>}
+        {tab==='pi'         && <TabListadoPI   state={state} setState={setState}/>}
+        {tab==='programador'&& <TabProgramador state={state} setState={setState}/>}
+        {tab==='exportar'   && <TabExportar    state={state}/>}
+      </div>
+      <div className="app-footer">
+        <div style={{display:'flex',alignItems:'center',gap:12}}>
+          <div className="footer-logo"><img src={LOGO_SRC} alt="Calidra"/></div>
+          <span style={{fontSize:11,color:'var(--gray2)',fontWeight:500}}>Pi System Generador · © 2026 Calidra — Siempre Ahí</span>
+        </div>
+        <span style={{fontSize:11,color:'var(--gray2)',fontFamily:'var(--mono)'}}>v3.0.0</span>
+      </div>
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
