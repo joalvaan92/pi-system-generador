@@ -813,7 +813,7 @@ const TabCargar = ({state, setState}) => {
     return found;
   };
 
-  const pdfPageToCanvas = async (page, scale = 2.5) => {
+  const pdfPageToCanvas = async (page, scale = 4.0) => {
     const viewport = page.getViewport({scale});
     const canvas = document.createElement('canvas');
     canvas.width = viewport.width; canvas.height = viewport.height;
@@ -828,42 +828,77 @@ const TabCargar = ({state, setState}) => {
       const arrayBuffer = await f.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
 
-      // ── PASO 1: Intentar con texto vectorial de PDF.js (instantáneo) ──
+      // ── PASO 1: PDF.js text extraction con manejo especial para AutoCAD ──
       setPdfStatus('Extrayendo texto del PDF...');
       let allText = '';
       const canvases = [];
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
-        // Collect all text items — join without space to handle fragmented AutoCAD text
-        const pageText = content.items.map(it => it.str).join('');
-        allText += pageText + ' ';
-        // Pre-render canvas for OCR fallback
+        // AutoCAD fragmenta cada carácter por separado — agrupar por proximidad X/Y
+        const items = content.items;
+        // Sort by Y then X to reconstruct reading order
+        const sorted = [...items].sort((a,b) => {
+          const dy = Math.round(b.transform[5]/4)*4 - Math.round(a.transform[5]/4)*4;
+          return dy !== 0 ? dy : a.transform[4] - b.transform[4];
+        });
+        // Group chars that are close together (same "word")
+        let pageText = '';
+        let lastX = -9999, lastY = -9999;
+        for (const it of sorted) {
+          const x = it.transform[4], y = it.transform[5];
+          const gap = Math.abs(y - lastY) > 5 ? '\n' : (x - lastX > 15 ? ' ' : '');
+          pageText += gap + it.str;
+          lastX = x + (it.width || 0); lastY = y;
+        }
+        allText += pageText + '\n';
         canvases.push(await pdfPageToCanvas(page));
       }
 
       let found = extractTagsFromText(allText);
 
-      // ── PASO 2: Si no encontró nada, usar Tesseract OCR (gratis, en navegador) ──
+      // ── PASO 2: OCR con Tesseract si PDF.js no encontró tags ──
       if (found.length === 0) {
-        setPdfStatus(`Texto no detectado — activando OCR (puede tardar 1-2 min)...`);
+        setPdfStatus('Activando OCR (puede tardar 1-2 min)...');
         const worker = await Tesseract.createWorker('eng', 1, {
-          logger: m => { if (m.status === 'recognizing text') setPdfStatus(`OCR página... ${Math.round(m.progress*100)}%`); }
+          logger: m => {
+            if (m.status === 'recognizing text') setPdfStatus(`OCR página... ${Math.round(m.progress*100)}%`);
+            if (m.status === 'loading tesseract core') setPdfStatus('Cargando motor OCR...');
+          }
         });
-        // Configure for uppercase industrial tags
-        await worker.setParameters({ tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-. ' });
+        // No whitelist — let Tesseract see everything, regex will filter
+        await worker.setParameters({
+          tessedit_pageseg_mode: '11', // sparse text — good for diagrams
+        });
         let ocrText = '';
         for (let i = 0; i < canvases.length; i++) {
           setPdfStatus(`OCR página ${i+1} de ${canvases.length}...`);
           const { data: { text } } = await worker.recognize(canvases[i]);
-          ocrText += text + ' ';
+          ocrText += text + '\n';
         }
         await worker.terminate();
         found = extractTagsFromText(ocrText);
+
+        // ── PASO 3: Si Tesseract tampoco — intentar regex más flexible ──
+        if (found.length === 0) {
+          // Some OCR engines output lowercase or with spaces inside tags (e.g. "SIL - 01")
+          const flexRegex = /\b([A-Za-z]{2,5})\s*[-–]\s*(\d{2,3})\b/g;
+          const seen = new Set();
+          let m;
+          while ((m = flexRegex.exec(ocrText)) !== null) {
+            const tag = (m[1].toUpperCase() + '-' + m[2]);
+            if (!seen.has(tag)) {
+              seen.add(tag);
+              const pfx = m[1].toUpperCase();
+              const catActivo = CAT_ACTIVOS.find(a => a.id === pfx);
+              found.push({ id: found.length+1, tag, name: catActivo ? catActivo.desc : pfx, area: pfx });
+            }
+          }
+        }
       }
 
       if (found.length === 0) {
-        setPdfError('No se detectaron tags (patrón XXX-00). El DFP puede tener baja resolución o los tags están en formato diferente.');
+        setPdfError('No se detectaron tags. Posibles causas: (1) El PDF es imagen escaneada de muy baja resolución, (2) Los tags usan un formato distinto a XXX-00. Intenta exportar el DWG a PDF con mejor calidad desde AutoCAD.');
       } else {
         setPdfStatus(`✓ ${found.length} equipos detectados`);
         setEquips(found);
