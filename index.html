@@ -9,6 +9,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 <style>
 :root {
   --red:#D0021B;--red2:#E8031F;--red3:#FF1A31;
@@ -259,6 +261,31 @@ input[type=checkbox]{accent-color:var(--red);width:14px;height:14px;cursor:point
 /* FOOTER */
 .app-footer{border-top:1px solid var(--gray4);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;background:var(--white);}
 .footer-logo img{height:32px;object-fit:contain;}
+
+/* GITHUB SYNC */
+.gh-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1.5px solid var(--gray3);border-radius:8px;background:var(--white);font-family:var(--sans);font-size:11px;font-weight:700;color:var(--dark2);cursor:pointer;transition:all .15s;}
+.gh-btn:hover{border-color:#24292f;color:#24292f;background:#f6f8fa;}
+.gh-btn.connected{border-color:#238636;color:#238636;background:rgba(35,134,54,.07);}
+.gh-btn.syncing{opacity:.6;cursor:wait;}
+.gh-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;animation:fadeIn .15s;}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.gh-modal{background:var(--white);border-radius:18px;box-shadow:var(--shadow-lg);width:520px;max-width:95vw;overflow:hidden;animation:slideUp .2s cubic-bezier(.4,0,.2,1);}
+.gh-modal-head{background:linear-gradient(135deg,#24292f 0%,#1a1f24 100%);padding:22px 28px;display:flex;align-items:center;justify-content:space-between;}
+.gh-modal-title{font-size:15px;font-weight:800;color:#fff;display:flex;align-items:center;gap:10px;}
+.gh-modal-body{padding:24px 28px;display:flex;flex-direction:column;gap:16px;}
+.gh-modal-footer{padding:16px 28px;border-top:1px solid var(--gray4);display:flex;align-items:center;justify-content:space-between;background:var(--gray6);}
+.gh-status{padding:10px 14px;border-radius:9px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:8px;}
+.gh-status.ok{background:rgba(35,134,54,.1);border:1px solid rgba(35,134,54,.3);color:#238636;}
+.gh-status.err{background:var(--red-dim);border:1px solid var(--red-border);color:var(--red);}
+.gh-status.info{background:var(--blue-dim);border:1px solid rgba(37,99,235,.2);color:#1e40af;}
+.gh-action-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.gh-action-card{border:1.5px solid var(--gray4);border-radius:12px;padding:18px;cursor:pointer;transition:all .15s;text-align:center;}
+.gh-action-card:hover:not(:disabled){border-color:var(--red);box-shadow:var(--shadow-md);}
+.gh-action-card:disabled{opacity:.4;cursor:not-allowed;}
+.gh-action-card .ga-icon{font-size:28px;margin-bottom:8px;}
+.gh-action-card h4{font-size:12px;font-weight:800;margin-bottom:4px;}
+.gh-action-card p{font-size:10px;color:var(--gray2);}
+.gh-log{background:#0d1117;border-radius:10px;padding:14px;font-family:var(--mono);font-size:10px;color:#7ee787;max-height:120px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;}
 </style>
 </head>
 <body>
@@ -741,6 +768,8 @@ const TabCargar = ({state, setState}) => {
   const [search, setSearch] = useState('');
   const [projName, setProjName] = useState('');
   const [plantaId, setPlantaId] = useState('');
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState('');
   const fileRef = useRef();
 
   const onExcel = e => {
@@ -757,17 +786,51 @@ const TabCargar = ({state, setState}) => {
     r.readAsArrayBuffer(f);
   };
 
-  const onDFP = e => {
-    if (!e.target.files[0]) return;
-    const mock = [
-      {id:1,tag:'TAM-01',name:'Tolva de Alimentación',area:'TRI'},{id:2,tag:'AGR-01',name:'Alimentador Grizzly',area:'TRI'},
-      {id:3,tag:'QQU-01',name:'Quebradora de Quijada',area:'TRI'},{id:4,tag:'TBA-01',name:'Transportador 1',area:'TRI'},
-      {id:5,tag:'TBA-02',name:'Transportador 2',area:'TRI'},{id:6,tag:'TBA-03',name:'Transportador 3',area:'TRI'},
-      {id:7,tag:'CPO-01',name:'Colector de Polvos 1',area:'TRI'},{id:8,tag:'CPO-02',name:'Colector de Polvos 2',area:'TRI'},
-      {id:9,tag:'CIE-01',name:'Criba 1',area:'TRI'},{id:10,tag:'SIL-01',name:'Silo 1',area:'MCV'},
-    ];
-    setEquips(mock);
-    const s = {}; mock.forEach(e=>s[e.id]=true); setSel(s);
+  const onDFP = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    setPdfLoading(true); setPdfError(''); setEquips([]); setSel({});
+    try {
+      const arrayBuffer = await f.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+      let fullText = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        fullText += content.items.map(it => it.str).join(' ') + '\n';
+      }
+      // Detect equipment tags: 2-5 uppercase letters + dash + 2-3 digits (e.g. TAM-01, CPO-02, COMP-001)
+      const tagRegex = /\b([A-ZÁÉÍÓÚÑ]{2,5}-\d{2,3}[A-Z]?)\b/g;
+      const seen = new Set();
+      const found = [];
+      let match;
+      while ((match = tagRegex.exec(fullText)) !== null) {
+        const tag = match[1];
+        if (!seen.has(tag)) {
+          seen.add(tag);
+          const pfx = tag.split('-')[0];
+          // Try to find a description near the tag in the text (up to 60 chars after)
+          const idx = match.index;
+          const snippet = fullText.slice(idx, idx + 80).replace(tagRegex, '').trim();
+          const descMatch = snippet.match(/[A-ZÁÉÍÓÚÑ][a-záéíóúñ][A-Za-záéíóúñ\s]{3,40}/);
+          const name = descMatch ? descMatch[0].trim().slice(0,40) : pfx;
+          // Area = prefix
+          const catActivo = (typeof CAT_ACTIVOS !== 'undefined' ? CAT_ACTIVOS : []).find(a => a.id === pfx);
+          const area = catActivo ? catActivo.id : pfx;
+          found.push({id: found.length + 1, tag, name: catActivo ? catActivo.desc : name, area});
+        }
+      }
+      if (found.length === 0) {
+        setPdfError(`No se detectaron tags en el PDF. Asegúrate de que el PDF tenga texto seleccionable (no imagen escaneada). Se buscó el patrón: XXX-00`);
+      } else {
+        setEquips(found);
+        const s = {}; found.forEach(eq => s[eq.id] = true); setSel(s);
+      }
+    } catch (err) {
+      setPdfError('Error al leer el PDF: ' + err.message);
+    } finally {
+      setPdfLoading(false);
+      e.target.value = ''; // reset input so the same file can be re-uploaded
+    }
   };
 
   const filtered = equips.filter(e=>!search||(e.tag+e.name).toLowerCase().includes(search.toLowerCase()));
@@ -827,10 +890,14 @@ const TabCargar = ({state, setState}) => {
 
         {mode === 'dfp' && (
           <div>
-            <div className="upload-zone" onClick={()=>fileRef.current.click()}>
-              <div className="uz-icon">📄</div><h3>Arrastra el DFP aquí</h3><p>o haz clic · .pdf</p>
+            <div className="alert alert-blue mb-16"><Ico n="info" s={13}/> El PDF debe tener <strong>texto seleccionable</strong> (no imagen escaneada). Se detectan tags con el patrón <strong>XXX-00</strong>.</div>
+            <div className="upload-zone" onClick={()=>!pdfLoading&&fileRef.current.click()} style={{opacity:pdfLoading?.6:1,cursor:pdfLoading?'wait':'pointer'}}>
+              <div className="uz-icon">{pdfLoading?'⏳':'📄'}</div>
+              <h3>{pdfLoading?'Analizando PDF...':'Arrastra el DFP aquí'}</h3>
+              <p>{pdfLoading?'Extrayendo tags, un momento...':'o haz clic · .pdf'}</p>
               <input ref={fileRef} type="file" accept=".pdf" style={{display:'none'}} onChange={onDFP}/>
             </div>
+            {pdfError && <div className="alert alert-red mt-12"><Ico n="warn" s={13}/> {pdfError}</div>}
             {equips.length > 0 && (
               <div className="mt-16">
                 <div className="flex-between mb-16">
@@ -1170,12 +1237,179 @@ const TabExportar = ({state}) => {
   );
 };
 
+// ── GITHUB SYNC ────────────────────────────────────────────────────────────────
+const GH_STORAGE_KEY = 'pi_gh_config';
+
+const GitHubSync = ({state, setState, onClose}) => {
+  const saved = (() => { try { return JSON.parse(sessionStorage.getItem(GH_STORAGE_KEY)||'{}'); } catch(e){return{};} })();
+  const [token, setToken]   = useState(saved.token||'');
+  const [repo,  setRepo]    = useState(saved.repo||'');      // owner/repo
+  const [branch,setBranch]  = useState(saved.branch||'main');
+  const [filePath,setFilePath]=useState(saved.filePath||'pi-project-state.json');
+  const [status, setStatus] = useState(null);  // {type:'ok'|'err'|'info', msg}
+  const [log,    setLog]    = useState('');
+  const [busy,   setBusy]   = useState(false);
+
+  const addLog = msg => setLog(l => l + `[${new Date().toLocaleTimeString('es-MX')}] ${msg}\n`);
+
+  const saveConfig = () => {
+    sessionStorage.setItem(GH_STORAGE_KEY, JSON.stringify({token,repo,branch,filePath}));
+    setStatus({type:'ok', msg:'Configuración guardada en sesión ✓'});
+    addLog('Config guardada (solo esta sesión)');
+  };
+
+  const ghFetch = async (method, path, body) => {
+    const url = `https://api.github.com/repos/${repo}/contents/${filePath}`;
+    const opts = {
+      method,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Content-Type': 'application/json',
+      },
+    };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(url, opts);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+    return {res, data};
+  };
+
+  const doPull = async () => {
+    if (!token||!repo) { setStatus({type:'err',msg:'Configura el token y repo primero'}); return; }
+    setBusy(true); setStatus({type:'info',msg:'Descargando desde GitHub...'});
+    addLog(`GET ${repo}/${filePath} (branch: ${branch})`);
+    try {
+      const {data} = await ghFetch('GET');
+      const json = JSON.parse(atob(data.content.replace(/\n/g,'')));
+      setState(s => ({...s, ...json}));
+      setStatus({type:'ok', msg:`✓ Pull exitoso — ${data.name} (${new Date(data.sha.slice(0,7)).toLocaleString('es-MX')||'SHA: '+data.sha.slice(0,7)})`});
+      addLog(`OK — ${data.size} bytes, SHA ${data.sha.slice(0,7)}`);
+      addLog(`Elementos cargados: ${json.elements?.length||0}`);
+    } catch(e) {
+      setStatus({type:'err',msg:`Error al hacer pull: ${e.message}`});
+      addLog(`ERROR: ${e.message}`);
+    } finally { setBusy(false); }
+  };
+
+  const doPush = async () => {
+    if (!token||!repo) { setStatus({type:'err',msg:'Configura el token y repo primero'}); return; }
+    setBusy(true); setStatus({type:'info',msg:'Subiendo a GitHub...'});
+    const payload = {
+      projectName: state.projectName,
+      plantaCode:  state.plantaCode,
+      elements:    state.elements,
+      assignments: state.assignments,
+      piTags:      state.piTags,
+      opcTags:     state.opcTags,
+      _meta: { savedAt: new Date().toISOString(), version: '3.0.0' }
+    };
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))));
+    addLog(`PUT ${repo}/${filePath} — ${(JSON.stringify(payload).length/1024).toFixed(1)}KB`);
+    try {
+      // Get SHA of existing file (needed to update)
+      let sha;
+      try { const {data} = await ghFetch('GET'); sha = data.sha; addLog(`SHA actual: ${sha.slice(0,7)}`); }
+      catch(e) { addLog('Archivo no existe, se creará nuevo'); }
+
+      const body = {
+        message: `[Pi System] Update ${state.projectName||'project'} — ${new Date().toLocaleString('es-MX')}`,
+        content,
+        branch,
+        ...(sha ? {sha} : {}),
+      };
+      const {data} = await ghFetch('PUT', null, body);
+      setStatus({type:'ok', msg:`✓ Push exitoso — commit ${data.commit?.sha?.slice(0,7)||''}`});
+      addLog(`OK — commit ${data.commit?.sha?.slice(0,7)}, ${state.elements.length} elements`);
+    } catch(e) {
+      setStatus({type:'err',msg:`Error al hacer push: ${e.message}`});
+      addLog(`ERROR: ${e.message}`);
+    } finally { setBusy(false); }
+  };
+
+  const isConfigured = token && repo;
+
+  return (
+    <div className="gh-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="gh-modal">
+        <div className="gh-modal-head">
+          <div className="gh-modal-title">
+            <svg height="20" viewBox="0 0 16 16" fill="white"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+            GitHub Sync
+          </div>
+          <button style={{background:'none',border:'none',color:'rgba(255,255,255,.6)',cursor:'pointer',fontSize:20,lineHeight:1}} onClick={onClose}>×</button>
+        </div>
+
+        <div className="gh-modal-body">
+          {/* Config */}
+          <div className="card" style={{padding:16}}>
+            <div className="card-title" style={{marginBottom:12}}><span className="card-dot"/>CONFIGURACIÓN</div>
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
+              <div>
+                <label className="form-label">Personal Access Token (PAT) <span style={{color:'var(--red)'}}>*</span></label>
+                <input type="password" style={{width:'100%',fontFamily:'var(--mono)',fontSize:11}} placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" value={token} onChange={e=>setToken(e.target.value)}/>
+                <div style={{fontSize:10,color:'var(--gray2)',marginTop:4}}>Genera en GitHub → Settings → Developer Settings → Personal access tokens → scope: <strong>repo</strong></div>
+              </div>
+              <div className="g2" style={{gap:10}}>
+                <div>
+                  <label className="form-label">Repositorio <span style={{color:'var(--red)'}}>*</span></label>
+                  <input type="text" style={{width:'100%',fontFamily:'var(--mono)',fontSize:11}} placeholder="joalvaan92/pi-system-generador" value={repo} onChange={e=>setRepo(e.target.value)}/>
+                </div>
+                <div>
+                  <label className="form-label">Branch</label>
+                  <input type="text" style={{width:'100%',fontFamily:'var(--mono)',fontSize:11}} placeholder="main" value={branch} onChange={e=>setBranch(e.target.value)}/>
+                </div>
+              </div>
+              <div>
+                <label className="form-label">Ruta del archivo de estado</label>
+                <input type="text" style={{width:'100%',fontFamily:'var(--mono)',fontSize:11}} placeholder="pi-project-state.json" value={filePath} onChange={e=>setFilePath(e.target.value)}/>
+                <div style={{fontSize:10,color:'var(--gray2)',marginTop:4}}>Archivo JSON donde se guarda el estado del proyecto (elements, tags, assignments)</div>
+              </div>
+              <button className="btn btn-outline btn-sm" style={{alignSelf:'flex-start'}} onClick={saveConfig}>💾 Guardar config en sesión</button>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="gh-action-row">
+            <button className="gh-action-card" disabled={!isConfigured||busy} onClick={doPull}>
+              <div className="ga-icon">⬇️</div>
+              <h4>Pull desde GitHub</h4>
+              <p>Descarga el estado guardado en el repo y lo carga en la app</p>
+            </button>
+            <button className="gh-action-card" disabled={!isConfigured||busy||state.elements.length===0} onClick={doPush}>
+              <div className="ga-icon">⬆️</div>
+              <h4>Push a GitHub</h4>
+              <p>Sube el estado actual ({state.elements.length} elements) al repo como JSON</p>
+            </button>
+          </div>
+
+          {status && <div className={`gh-status ${status.type}`}>{status.msg}</div>}
+
+          {log && (
+            <div>
+              <div style={{fontSize:10,fontWeight:800,color:'var(--gray2)',textTransform:'uppercase',letterSpacing:.8,marginBottom:6}}>Log</div>
+              <div className="gh-log">{log}</div>
+            </div>
+          )}
+        </div>
+
+        <div className="gh-modal-footer">
+          <div style={{fontSize:10,color:'var(--gray2)'}}>🔒 El token solo se guarda en esta sesión del navegador</div>
+          <button className="btn btn-outline btn-sm" onClick={onClose}>Cerrar</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ── APP ────────────────────────────────────────────────────────────────────────
 const App = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [tab, setTab] = useState('resumen');
   const [users] = useState(USERS_INIT);
   const [state, setState] = useState({projectName:'',plantaCode:'',elements:[],assignments:{},piTags:[],opcTags:[]});
+  const [ghOpen, setGhOpen] = useState(false);
 
   if (!currentUser) return <Login onLogin={setCurrentUser} users={users}/>;
 
@@ -1190,6 +1424,7 @@ const App = () => {
 
   return (
     <div style={{minHeight:'100vh',display:'flex',flexDirection:'column'}}>
+      {ghOpen && <GitHubSync state={state} setState={setState} onClose={()=>setGhOpen(false)}/>}
       <div className="header">
         <div style={{display:'flex',alignItems:'center'}}>
           <div><img src={LOGO_SRC} alt="Calidra" style={{height:42,objectFit:'contain'}}/></div>
@@ -1208,6 +1443,10 @@ const App = () => {
               <div className="h-role">{currentUser.role}</div>
             </div>
           </div>
+          <button className="gh-btn" onClick={()=>setGhOpen(true)}>
+            <svg height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+            GitHub Sync
+          </button>
           <button className="btn-logout" onClick={()=>{setCurrentUser(null);setTab('resumen');}}>Cerrar sesión</button>
         </div>
       </div>
