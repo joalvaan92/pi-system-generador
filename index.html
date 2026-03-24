@@ -11,6 +11,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+<script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
 <style>
 :root {
   --red:#D0021B;--red2:#E8031F;--red3:#FF1A31;
@@ -770,6 +771,7 @@ const TabCargar = ({state, setState}) => {
   const [plantaId, setPlantaId] = useState('');
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfError, setPdfError] = useState('');
+  const [pdfStatus, setPdfStatus] = useState('');
   const fileRef = useRef();
 
   const onExcel = e => {
@@ -786,50 +788,92 @@ const TabCargar = ({state, setState}) => {
     r.readAsArrayBuffer(f);
   };
 
-  const onDFP = async e => {
-    const f = e.target.files[0]; if (!f) return;
-    setPdfLoading(true); setPdfError(''); setEquips([]); setSel({});
-    try {
-      const arrayBuffer = await f.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
-      let fullText = '';
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        fullText += content.items.map(it => it.str).join(' ') + '\n';
-      }
-      // Detect equipment tags: 2-5 uppercase letters + dash + 2-3 digits (e.g. TAM-01, CPO-02, COMP-001)
-      const tagRegex = /\b([A-ZÁÉÍÓÚÑ]{2,5}-\d{2,3}[A-Z]?)\b/g;
-      const seen = new Set();
-      const found = [];
-      let match;
-      while ((match = tagRegex.exec(fullText)) !== null) {
-        const tag = match[1];
+  // Extract tags from raw text using regex
+  const extractTagsFromText = (text) => {
+    // Join everything, normalize spaces, then search
+    const normalized = text.replace(/\s+/g, ' ');
+    // Also try joining without spaces (AutoCAD sometimes fragments text character by character)
+    const noSpaces = text.replace(/\s/g, '');
+    const tagRegex = /\b([A-Z]{2,5}-\d{2,3}[A-Z]?)\b/g;
+    const seen = new Set();
+    const found = [];
+    for (const src of [normalized, noSpaces]) {
+      let m;
+      while ((m = tagRegex.exec(src)) !== null) {
+        const tag = m[1];
         if (!seen.has(tag)) {
           seen.add(tag);
           const pfx = tag.split('-')[0];
-          // Try to find a description near the tag in the text (up to 60 chars after)
-          const idx = match.index;
-          const snippet = fullText.slice(idx, idx + 80).replace(tagRegex, '').trim();
-          const descMatch = snippet.match(/[A-ZÁÉÍÓÚÑ][a-záéíóúñ][A-Za-záéíóúñ\s]{3,40}/);
-          const name = descMatch ? descMatch[0].trim().slice(0,40) : pfx;
-          // Area = prefix
-          const catActivo = (typeof CAT_ACTIVOS !== 'undefined' ? CAT_ACTIVOS : []).find(a => a.id === pfx);
-          const area = catActivo ? catActivo.id : pfx;
-          found.push({id: found.length + 1, tag, name: catActivo ? catActivo.desc : name, area});
+          const catActivo = CAT_ACTIVOS.find(a => a.id === pfx);
+          found.push({ id: found.length+1, tag, name: catActivo ? catActivo.desc : pfx, area: pfx });
         }
       }
+      tagRegex.lastIndex = 0;
+    }
+    return found;
+  };
+
+  const pdfPageToCanvas = async (page, scale = 2.5) => {
+    const viewport = page.getViewport({scale});
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width; canvas.height = viewport.height;
+    await page.render({canvasContext: canvas.getContext('2d'), viewport}).promise;
+    return canvas;
+  };
+
+  const onDFP = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    setPdfLoading(true); setPdfError(''); setPdfStatus('Leyendo PDF...'); setEquips([]); setSel({});
+    try {
+      const arrayBuffer = await f.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+
+      // ── PASO 1: Intentar con texto vectorial de PDF.js (instantáneo) ──
+      setPdfStatus('Extrayendo texto del PDF...');
+      let allText = '';
+      const canvases = [];
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        // Collect all text items — join without space to handle fragmented AutoCAD text
+        const pageText = content.items.map(it => it.str).join('');
+        allText += pageText + ' ';
+        // Pre-render canvas for OCR fallback
+        canvases.push(await pdfPageToCanvas(page));
+      }
+
+      let found = extractTagsFromText(allText);
+
+      // ── PASO 2: Si no encontró nada, usar Tesseract OCR (gratis, en navegador) ──
       if (found.length === 0) {
-        setPdfError(`No se detectaron tags en el PDF. Asegúrate de que el PDF tenga texto seleccionable (no imagen escaneada). Se buscó el patrón: XXX-00`);
+        setPdfStatus(`Texto no detectado — activando OCR (puede tardar 1-2 min)...`);
+        const worker = await Tesseract.createWorker('eng', 1, {
+          logger: m => { if (m.status === 'recognizing text') setPdfStatus(`OCR página... ${Math.round(m.progress*100)}%`); }
+        });
+        // Configure for uppercase industrial tags
+        await worker.setParameters({ tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-. ' });
+        let ocrText = '';
+        for (let i = 0; i < canvases.length; i++) {
+          setPdfStatus(`OCR página ${i+1} de ${canvases.length}...`);
+          const { data: { text } } = await worker.recognize(canvases[i]);
+          ocrText += text + ' ';
+        }
+        await worker.terminate();
+        found = extractTagsFromText(ocrText);
+      }
+
+      if (found.length === 0) {
+        setPdfError('No se detectaron tags (patrón XXX-00). El DFP puede tener baja resolución o los tags están en formato diferente.');
       } else {
+        setPdfStatus(`✓ ${found.length} equipos detectados`);
         setEquips(found);
         const s = {}; found.forEach(eq => s[eq.id] = true); setSel(s);
       }
     } catch (err) {
-      setPdfError('Error al leer el PDF: ' + err.message);
+      setPdfError('Error: ' + err.message);
     } finally {
       setPdfLoading(false);
-      e.target.value = ''; // reset input so the same file can be re-uploaded
+      e.target.value = '';
     }
   };
 
@@ -890,14 +934,18 @@ const TabCargar = ({state, setState}) => {
 
         {mode === 'dfp' && (
           <div>
-            <div className="alert alert-blue mb-16"><Ico n="info" s={13}/> El PDF debe tener <strong>texto seleccionable</strong> (no imagen escaneada). Se detectan tags con el patrón <strong>XXX-00</strong>.</div>
+            <div className="alert alert-blue mb-16">
+              <Ico n="info" s={13}/>
+              <span><strong>100% gratis y local.</strong> Primero intenta extraer texto del PDF. Si no funciona (DFPs de AutoCAD), activa OCR automáticamente en tu navegador — sin APIs, sin internet extra.</span>
+            </div>
             <div className="upload-zone" onClick={()=>!pdfLoading&&fileRef.current.click()} style={{opacity:pdfLoading?.6:1,cursor:pdfLoading?'wait':'pointer'}}>
               <div className="uz-icon">{pdfLoading?'⏳':'📄'}</div>
-              <h3>{pdfLoading?'Analizando PDF...':'Arrastra el DFP aquí'}</h3>
-              <p>{pdfLoading?'Extrayendo tags, un momento...':'o haz clic · .pdf'}</p>
+              <h3>{pdfLoading?'Procesando DFP...':'Arrastra el DFP aquí'}</h3>
+              <p style={{fontWeight:pdfLoading?700:400,color:pdfLoading?'var(--red)':'inherit'}}>{pdfLoading ? pdfStatus||'Un momento...' : 'o haz clic · .pdf · AutoCAD/Autodesk'}</p>
               <input ref={fileRef} type="file" accept=".pdf" style={{display:'none'}} onChange={onDFP}/>
             </div>
             {pdfError && <div className="alert alert-red mt-12"><Ico n="warn" s={13}/> {pdfError}</div>}
+            {!pdfLoading && pdfStatus && equips.length > 0 && <div className="alert alert-green mt-12"><Ico n="check" s={13}/> {pdfStatus}</div>}
             {equips.length > 0 && (
               <div className="mt-16">
                 <div className="flex-between mb-16">
